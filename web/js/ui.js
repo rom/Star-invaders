@@ -328,7 +328,7 @@ export class UI {
       this.el.feed.innerHTML = '<li class="muted">no traffic yet</li>';
       return;
     }
-    const recent = items.slice(-28).reverse();
+    const recent = items.slice(-16).reverse();
     this.el.feed.innerHTML = recent.map((f) => `
       <li class="kind-${esc(f.kind)}">
         <span class="who">${esc(f.name)}</span> ${esc(f.text)}

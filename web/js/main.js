@@ -109,8 +109,21 @@ function showMenu() {
 }
 
 function wireMenuButtons() {
+  // Capture the handle as it is typed. Reading it only when Launch is
+  // pressed loses it the moment the panel is replaced - going via Level
+  // select used to file the run under the previous pilot's name.
+  const nameInput = document.getElementById('pilotName');
+  nameInput?.addEventListener('input', () => {
+    const typed = nameInput.value.trim().toUpperCase();
+    if (!typed) return;
+    state.name = typed;
+    save(STORE.name, typed);
+    net.presence({ name: typed, level: 0, score: 0, lives: 0, status: 'lobby' });
+  });
+
   document.getElementById('btnStart')?.addEventListener('click', () => startGame(1));
   document.getElementById('btnPractice')?.addEventListener('click', async () => {
+    currentName();              // commit whatever is in the field first
     await audio.unlock();
     audio.uiClick();
     ui.levelSelect({ levels: state.campaign.levels, unlocked: state.unlocked });
@@ -322,9 +335,10 @@ function wireChrome() {
   });
 
   ui.el.btnFull.addEventListener('click', () => {
-    const wrap = document.getElementById('screenWrap');
+    // The column, not the play field: see the :fullscreen rules in the CSS.
+    const col = document.getElementById('screenCol');
     if (document.fullscreenElement) document.exitFullscreen?.();
-    else wrap.requestFullscreen?.().catch(() => ui.toast('fullscreen refused', 'warn'));
+    else col.requestFullscreen?.().catch(() => ui.toast('fullscreen refused', 'warn'));
   });
 
   window.addEventListener('keydown', (ev) => {

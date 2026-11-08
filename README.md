@@ -12,6 +12,8 @@ standard library; the client is plain ES modules, canvas, and Web Audio.
 go run .        # then open http://localhost:8080
 ```
 
+![The Star Invaders title screen, with the global leaderboard and live pilot count alongside the play field](docs/screenshots/menu.png)
+
 ## What is in the box
 
 **Twelve levels, each with a mix of attackers.** Every level must be cleared
@@ -33,12 +35,32 @@ multi-phase boss on top of the regular waves.
 | 11 | Siege Line | bulwarks, gunners, splitters, phantoms | comets, asteroids, mines |
 | 12 | **Void Dreadnought** | final boss + bulwarks, swarmlets, lancers | everything |
 
+Every level opens on a briefing naming exactly what is about to arrive, and in
+what numbers:
+
+![The level 4 briefing: sine weavers, volt gunners, krill grunts and needle scouts, with ion comets and asteroids listed as hazards](docs/screenshots/level-briefing.png)
+
 Ten alien archetypes, four "unknown space objects" and three bosses, each with
 its own silhouette and behaviour: marching formations, divers that peel off and
 come at you, sine weavers, orbiters, phantoms that cloak out of your targeting
 solution, splitters that become two scouts when killed, armoured bulwarks that
 halve head-on damage, and suicide lancers. The drifting objects do not shoot
-and cannot be reasoned with.
+and cannot be reasoned with. The in-game codex lists every one of them, built
+from the same definitions the game is played from:
+
+<img src="docs/screenshots/codex.png" width="328" alt="The codex panel: each
+hostile with its hit points, score value and a line on how it behaves">
+
+A level in progress - the wall half cleared, a gunner arc above it, an asteroid
+drifting through, a spread-shot pickup on its way down, and four bunkers in
+varying states of erosion:
+
+![Level 2, Debris Field, mid game](docs/screenshots/gameplay.png)
+
+Bosses hold the screen on levels 5, 9 and 12, each running through several
+attack phases as its hull comes apart:
+
+![The Void Dreadnought on level 12, health bar part drained, firing orb spreads while armoured bulwarks and swarmlets close in](docs/screenshots/boss.png)
 
 **Sound.** Every effect is synthesised at runtime with the Web Audio API -
 pulse, triangle and noise voices through a limiter. Cannon fire, hits, armour
@@ -53,6 +75,10 @@ of the audio clock so it stays in time. Nothing is streamed or downloaded.
 **The defence net.** Everyone connected shares a roster, a global activity feed
 ("ORION-42 destroyed The Warden on level 5") and a squadron chat channel. High
 scores are announced to everyone the moment they land.
+
+<img src="docs/screenshots/defence-net.png" width="328" alt="The defence net
+panel: who is online and what level they are on, a live activity feed, and the
+squadron channel">
 
 ## Running it
 
@@ -86,7 +112,13 @@ entire deployment: one file, no runtime dependencies, no CGO.
 | Pause | `P` or `Esc` |
 | Mute / fullscreen | `M` / `F` |
 
-On a touch screen the on-screen pad appears automatically.
+On a touch screen the on-screen pad appears automatically, laid out under the
+play field rather than over it, and the HUD scales with the field so it stays
+in proportion on a small screen.
+
+<img src="docs/screenshots/mobile.png" width="420" alt="Star Invaders on a
+phone in portrait: the scaled play field with the control pad beneath it, and
+the leaderboard below that">
 
 Pickups drop from kills: rapid coils, spread array, lance (piercing) rounds,
 a deflector that eats one hit, a salvage magnet, a spare hull, and smart bomb
@@ -160,6 +192,7 @@ web/js/net.js            campaign fetch, SSE, presence, score submission
 web/js/ui.js             HUD, overlays, leaderboard, roster, codex
 web/js/main.js           boot and wiring
 test/js/                 node --test suite for the formation and bunker logic
+docs/screenshots/        the images used above
 ```
 
 ## Data

@@ -162,7 +162,22 @@ a:hover { text-decoration: underline; }
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 18px 50px rgba(0, 0, 0, 0.6), inset 0 0 90px rgba(76, 201, 240, 0.05);
 }
 
-.screen-wrap:fullscreen { aspect-ratio: auto; height: 100vh; border-radius: 0; }
+/* Fullscreen is taken on the column, not the play field itself: the user
+   agent forces a fullscreen element to 100% x 100% with !important, which
+   would stretch the field to the shape of the monitor. Letterboxing the
+   field inside a fullscreen column keeps it square with the game. */
+.screen-col:fullscreen {
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  background: var(--bg);
+}
+.screen-col:fullscreen .screen-wrap {
+  width: min(100vw, calc(100vh * 1.3637));
+  width: min(100vw, calc(100dvh * 1.3637));
+  border-radius: 0;
+}
+.screen-col:fullscreen .controls-hint { display: none; }
 
 #game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: auto; touch-action: none; }
 
@@ -334,14 +349,14 @@ kbd {
 
 /* ----------------------------------------------------------- touch controls */
 
-.touch { position: absolute; inset: auto 0 0 0; display: grid; grid-template-columns: 1fr 1fr 1.3fr 1fr; gap: 8px; padding: 10px; }
-/* The pad sits over the play field, so it must get out of the way whenever
-   an overlay (menu, level intro, pause, scorecard) is up. */
-.overlay.show ~ .touch { display: none; }
+/* The pad sits under the play field rather than over it. Overlaying it put
+   the controls exactly where the bunkers and the player's own ship are,
+   which on a phone sized field hides both. */
+.touch { display: grid; grid-template-columns: 1fr 1fr 1.3fr 1fr; gap: 8px; }
 .tpad {
   font-family: var(--mono); font-size: 1.1rem;
-  padding: 16px 0; border-radius: 12px;
-  color: var(--ink); background: rgba(10,13,30,0.42);
+  padding: 15px 0; border-radius: 12px;
+  color: var(--ink); background: rgba(10,13,30,0.72);
   border: 1px solid var(--line-strong);
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
 }
@@ -479,6 +494,16 @@ kbd {
 
 @media (hover: none) and (pointer: coarse) {
   .controls-hint { display: none; }
+  /* Fullscreen still has to leave room for the pad row. */
+  .screen-col:fullscreen .screen-wrap {
+    width: min(100vw, calc((100vh - 72px) * 1.3637));
+    width: min(100vw, calc((100dvh - 72px) * 1.3637));
+  }
+  /* Leave room for the pad row under the field. */
+  .screen-wrap {
+    width: min(100%, calc((100vh - 260px) * 1.3637));
+    width: min(100%, calc((100dvh - 260px) * 1.3637));
+  }
 }
 
 /* Landscape on a phone: strip the chrome and give the height to the game. */
@@ -488,12 +513,12 @@ kbd {
   .topbar-stats, .footer, .controls-hint, .brand-sub { display: none; }
   .brand h1 { font-size: 1rem; }
   .screen-wrap {
-    width: min(100%, calc((100vh - 84px) * 1.3637));
-    width: min(100%, calc((100dvh - 84px) * 1.3637));
+    width: min(100%, calc((100vh - 112px) * 1.3637));
+    width: min(100%, calc((100dvh - 112px) * 1.3637));
   }
-  .touch { padding: 6px; gap: 6px; }
-  .tpad { padding: 9px 0; font-size: 0.86rem; }
-  .tpad.fire, .tpad.bomb { font-size: 0.68rem; }
+  .touch { gap: 6px; }
+  .tpad { padding: 10px 0; font-size: 0.9rem; }
+  .tpad.fire, .tpad.bomb { font-size: 0.7rem; }
   .rail { max-height: 50vh; }
 }
 

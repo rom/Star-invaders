@@ -36,7 +36,7 @@
   </header>
 
   <main class="stage">
-    <section class="screen-col">
+    <section class="screen-col" id="screenCol">
       <div class="screen-wrap" id="screenWrap">
         <canvas id="game" width="900" height="660" aria-label="Star Invaders play field"></canvas>
 
@@ -69,13 +69,13 @@
         </div>
 
         <div class="overlay" id="overlay"></div>
+      </div>
 
-        <div class="touch" id="touch" hidden>
-          <button class="tpad" data-act="left" type="button" aria-label="Move left">&#9664;</button>
-          <button class="tpad" data-act="right" type="button" aria-label="Move right">&#9654;</button>
-          <button class="tpad fire" data-act="fire" type="button" aria-label="Fire">FIRE</button>
-          <button class="tpad bomb" data-act="bomb" type="button" aria-label="Smart bomb">BOMB</button>
-        </div>
+      <div class="touch" id="touch" hidden>
+        <button class="tpad" data-act="left" type="button" aria-label="Move left">&#9664;</button>
+        <button class="tpad" data-act="right" type="button" aria-label="Move right">&#9654;</button>
+        <button class="tpad fire" data-act="fire" type="button" aria-label="Fire">FIRE</button>
+        <button class="tpad bomb" data-act="bomb" type="button" aria-label="Smart bomb">BOMB</button>
       </div>
 
       <div class="controls-hint">
