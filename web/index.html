@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Star Invaders - a twelve level browser shooter with a Go back end, global high scores and a live defence net.">
+<title>Star Invaders</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23060814'/%3E%3Cpath d='M8 12h3v-3h10v3h3v4h3v5h-5v-3h-3v3H13v-3h-3v3H5v-5h3z' fill='%237cf3a0'/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <h1>Star&nbsp;Invaders</h1>
+      <span class="brand-sub">12 levels &middot; defence net online</span>
+    </div>
+    <div class="topbar-stats" id="globalStats" aria-live="polite">
+      <div class="stat"><span class="stat-k">pilots online</span><span class="stat-v" id="statOnline">&mdash;</span></div>
+      <div class="stat"><span class="stat-k">sorties flown</span><span class="stat-v" id="statGames">&mdash;</span></div>
+      <div class="stat"><span class="stat-k">hostiles downed</span><span class="stat-v" id="statKills">&mdash;</span></div>
+      <div class="stat"><span class="stat-k">galaxy best</span><span class="stat-v" id="statBest">&mdash;</span></div>
+      <div class="stat"><span class="stat-k">campaigns won</span><span class="stat-v" id="statWins">&mdash;</span></div>
+    </div>
+    <div class="topbar-actions">
+      <button id="btnMute" class="icon-btn" type="button" aria-pressed="false" title="Mute all audio (M)">
+        <span class="ico" aria-hidden="true">&#9834;</span><span class="lbl">sound on</span>
+      </button>
+      <button id="btnFull" class="icon-btn" type="button" title="Fullscreen (F)">
+        <span class="ico" aria-hidden="true">&#9974;</span><span class="lbl">full</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="screen-col">
+      <div class="screen-wrap" id="screenWrap">
+        <canvas id="game" width="900" height="660" aria-label="Star Invaders play field"></canvas>
+
+        <div class="hud" id="hud" aria-hidden="true">
+          <div class="hud-row hud-top">
+            <div class="hud-block">
+              <span class="hud-k">score</span>
+              <span class="hud-v" id="hudScore">0</span>
+            </div>
+            <div class="hud-block hud-center">
+              <span class="hud-k" id="hudLevelName">standby</span>
+              <span class="hud-v small" id="hudLevel">level &mdash; / 12</span>
+              <div class="wave-bar" title="Hostiles remaining"><span id="waveFill"></span></div>
+              <div class="boss-bar" id="bossBar" hidden>
+                <span class="boss-name" id="bossName">boss</span>
+                <div class="boss-track"><span id="bossFill"></span></div>
+              </div>
+            </div>
+            <div class="hud-block right">
+              <span class="hud-k">best</span>
+              <span class="hud-v" id="hudBest">0</span>
+            </div>
+          </div>
+          <div class="hud-row hud-bottom">
+            <div class="lives" id="hudLives" title="Hulls remaining"></div>
+            <div class="powerups" id="hudPowerups"></div>
+            <div class="combo" id="hudCombo"></div>
+          </div>
+          <div class="toast-stack" id="toastStack"></div>
+        </div>
+
+        <div class="overlay" id="overlay"></div>
+
+        <div class="touch" id="touch" hidden>
+          <button class="tpad" data-act="left" type="button" aria-label="Move left">&#9664;</button>
+          <button class="tpad" data-act="right" type="button" aria-label="Move right">&#9654;</button>
+          <button class="tpad fire" data-act="fire" type="button" aria-label="Fire">FIRE</button>
+          <button class="tpad bomb" data-act="bomb" type="button" aria-label="Smart bomb">BOMB</button>
+        </div>
+      </div>
+
+      <div class="controls-hint">
+        <span><kbd>&larr;</kbd><kbd>&rarr;</kbd> or <kbd>A</kbd><kbd>D</kbd> move</span>
+        <span><kbd>Space</kbd> fire</span>
+        <span><kbd>B</kbd> smart bomb</span>
+        <span><kbd>P</kbd> pause</span>
+        <span><kbd>M</kbd> mute</span>
+      </div>
+    </section>
+
+    <aside class="rail">
+      <nav class="tabs" role="tablist">
+        <button class="tab is-active" role="tab" data-tab="board" aria-selected="true">High scores</button>
+        <button class="tab" role="tab" data-tab="live" aria-selected="false">Defence net</button>
+        <button class="tab" role="tab" data-tab="codex" aria-selected="false">Codex</button>
+      </nav>
+
+      <div class="tab-panel is-active" id="panel-board" role="tabpanel">
+        <ol class="board" id="board"><li class="board-empty">loading the hall of fame&hellip;</li></ol>
+        <p class="rail-note" id="boardNote"></p>
+      </div>
+
+      <div class="tab-panel" id="panel-live" role="tabpanel">
+        <h2 class="rail-h">Pilots in the net <span class="pill" id="rosterCount">0</span></h2>
+        <ul class="roster" id="roster"><li class="muted">connecting&hellip;</li></ul>
+        <h2 class="rail-h">Activity</h2>
+        <ul class="feed" id="feed"><li class="muted">waiting for traffic&hellip;</li></ul>
+        <h2 class="rail-h">Squadron channel</h2>
+        <ul class="chat" id="chat"></ul>
+        <form class="chat-form" id="chatForm" autocomplete="off">
+          <input id="chatInput" type="text" maxlength="120" placeholder="say something to the squadron" aria-label="Squadron message">
+          <button type="submit">send</button>
+        </form>
+        <div class="quickchat" id="quickChat">
+          <button type="button" data-say="Boss on level 12 is a wall.">boss is a wall</button>
+          <button type="button" data-say="Watch the phantoms, they cloak.">phantoms cloak</button>
+          <button type="button" data-say="Good hunting, pilots.">good hunting</button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panel-codex" role="tabpanel">
+        <h2 class="rail-h">Campaign</h2>
+        <ol class="levels" id="levelList"></ol>
+        <h2 class="rail-h">Known hostiles</h2>
+        <ul class="codex" id="codex"></ul>
+        <h2 class="rail-h">Pickups</h2>
+        <ul class="codex" id="codexPowerups"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <span>Go back end &middot; procedural chiptune audio &middot; no third party assets</span>
+    <span class="footer-right"><a href="/api/health">/api/health</a> &middot; <a href="/api/levels">/api/levels</a> &middot; <a href="/api/scores">/api/scores</a></span>
+  </footer>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<noscript><p style="padding:2rem;color:#f88">Star Invaders needs JavaScript enabled.</p></noscript>
+</body>
+</html>
