@@ -31,6 +31,7 @@ import (
 	"github.com/rom/star-invaders/internal/api"
 	"github.com/rom/star-invaders/internal/game"
 	"github.com/rom/star-invaders/internal/scores"
+	"github.com/rom/star-invaders/internal/userlevels"
 )
 
 //go:embed web
@@ -79,10 +80,15 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	levels, err := userlevels.New(filepath.Join(*dataDir, "userlevels.json"))
+	if err != nil {
+		return err
+	}
 
 	srv, err := api.New(api.Config{
 		Assets:  assets,
 		Store:   store,
+		Levels:  levels,
 		Logger:  logger,
 		Version: version,
 	})
@@ -94,6 +100,9 @@ func run() error {
 	persisterDone := make(chan struct{})
 	go store.RunPersister(persisterDone, 20*time.Second, func(err error) {
 		logger.Printf("persist error: %v", err)
+	})
+	go levels.RunPersister(persisterDone, 20*time.Second, func(err error) {
+		logger.Printf("level persist error: %v", err)
 	})
 
 	httpSrv := &http.Server{
@@ -137,6 +146,9 @@ func run() error {
 	time.Sleep(150 * time.Millisecond)
 	if err := store.Flush(); err != nil {
 		logger.Printf("final flush: %v", err)
+	}
+	if err := levels.Flush(); err != nil {
+		logger.Printf("final level flush: %v", err)
 	}
 	if shutdownErr != nil && !errors.Is(shutdownErr, context.DeadlineExceeded) {
 		return shutdownErr

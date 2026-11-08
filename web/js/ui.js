@@ -170,6 +170,7 @@ export class UI {
       <div class="actions">
         <button class="btn primary" id="btnStart" type="button">${canResume ? 'New sortie' : 'Launch'}</button>
         <button class="btn ghost" id="btnPractice" type="button">Level select</button>
+        <button class="btn ghost" id="btnCommunity" type="button">Community levels</button>
       </div>
       <p class="hint"><kbd>&larr;</kbd><kbd>&rarr;</kbd> move &middot; <kbd>Space</kbd> fire &middot; <kbd>B</kbd> bomb &middot; <kbd>P</kbd> pause &middot; drag the screen to fly</p>
       ${best ? `<p class="hint">your best: ${fmt(best)}</p>` : ''}
@@ -197,6 +198,46 @@ export class UI {
       <p>Levels unlock as you clear them. Scores from a mid-campaign start still count.</p>
       <div class="actions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));width:100%">${items}</div>
       <div class="actions"><button class="btn ghost" id="btnBackMenu" type="button">Back</button></div>
+    `);
+  }
+
+  community({ levels, total }) {
+    const items = levels.length
+      ? levels.map((e) => `<button class="btn" data-community="${esc(e.id)}" type="button"
+          style="justify-content:flex-start;text-align:left">
+          ${esc(e.level.name)}
+          <small style="color:var(--ink-dim);display:block;font-size:0.72em">
+            ${esc(e.author)} &middot; ${e.level.waves.length} wave${e.level.waves.length === 1 ? '' : 's'} &middot; ${e.plays} play${e.plays === 1 ? '' : 's'}
+          </small>
+        </button>`).join('')
+      : '';
+    this.showOverlay(`
+      <h2>Community levels</h2>
+      <p>${total ? `${fmt(total)} level${total === 1 ? '' : 's'} built in the editor.` : 'Nobody has published a level yet.'}
+         Scores from these are not ranked, because the leaderboard is scored against the campaign.</p>
+      ${items ? `<div class="actions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));width:100%">${items}</div>` : ''}
+      <div class="actions">
+        <a class="btn primary" href="/editor.html">Build one</a>
+        <button class="btn ghost" id="btnBackMenu" type="button">Back</button>
+      </div>
+    `);
+  }
+
+  customResult({ victory, levelName, author, score, kills, accuracy, duration: dur }) {
+    this.showOverlay(`
+      <h2 class="${victory ? 'win' : 'bad'}">${victory ? 'Level cleared' : 'Shot down'}</h2>
+      <p class="tagline">${esc(levelName)}${author ? ` &middot; built by ${esc(author)}` : ''}</p>
+      <dl class="scorecard">
+        <div><dt>score</dt><dd>${fmt(score)}</dd></div>
+        <div><dt>kills</dt><dd>${fmt(kills)}</dd></div>
+        <div><dt>accuracy</dt><dd>${accuracy.toFixed(0)}%</dd></div>
+        <div><dt>time</dt><dd>${duration(dur)}</dd></div>
+      </dl>
+      <p class="hint">community levels are not ranked on the leaderboard</p>
+      <div class="actions">
+        <button class="btn primary" id="btnRetry" type="button">Run it again</button>
+        <button class="btn ghost" id="btnMenu" type="button">Main screen</button>
+      </div>
     `);
   }
 

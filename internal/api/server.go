@@ -19,6 +19,7 @@ import (
 	"github.com/rom/star-invaders/internal/game"
 	"github.com/rom/star-invaders/internal/hub"
 	"github.com/rom/star-invaders/internal/scores"
+	"github.com/rom/star-invaders/internal/userlevels"
 )
 
 // forgeryFloor is the score below which plausibility checks are skipped:
@@ -30,6 +31,7 @@ const forgeryFloor = 3000
 type Config struct {
 	Assets      fs.FS // the web/ tree
 	Store       *scores.Store
+	Levels      *userlevels.Store
 	Logger      *log.Logger
 	Version     string
 	MaxBodyByte int64
@@ -47,6 +49,7 @@ type Server struct {
 	chatLim  *limiter
 	runLim   *limiter
 	eventLim *limiter
+	levelLim *limiter
 
 	done chan struct{}
 }
@@ -55,6 +58,9 @@ type Server struct {
 func New(cfg Config) (*Server, error) {
 	if cfg.Store == nil {
 		return nil, errors.New("api: Store is required")
+	}
+	if cfg.Levels == nil {
+		return nil, errors.New("api: Levels is required")
 	}
 	if cfg.Assets == nil {
 		return nil, errors.New("api: Assets is required")
@@ -74,6 +80,7 @@ func New(cfg Config) (*Server, error) {
 		chatLim:  newLimiter(20, 4),   // 20 chat lines/min/IP
 		runLim:   newLimiter(60, 10),  // 60 new runs/min/IP
 		eventLim: newLimiter(240, 30), // 240 milestone pings/min/IP
+		levelLim: newLimiter(60, 12),  // 60 editor writes/min/IP
 		done:     make(chan struct{}),
 	}
 	s.hub = hub.New(func() any { return s.statsPayload() })
@@ -114,6 +121,7 @@ func (s *Server) janitor() {
 			s.chatLim.sweep(30 * time.Minute)
 			s.runLim.sweep(30 * time.Minute)
 			s.eventLim.sweep(30 * time.Minute)
+			s.levelLim.sweep(30 * time.Minute)
 		case <-s.done:
 			return
 		}
@@ -132,6 +140,15 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/events", s.handleMilestone)
 	s.mux.HandleFunc("GET /api/chat", s.handleChatLog)
 	s.mux.HandleFunc("POST /api/chat", s.handleChatPost)
+
+	// The level editor.
+	s.mux.HandleFunc("GET /api/userlevels", s.handleListLevels)
+	s.mux.HandleFunc("POST /api/userlevels", s.handleCreateLevel)
+	s.mux.HandleFunc("POST /api/userlevels/validate", s.handleValidateLevel)
+	s.mux.HandleFunc("GET /api/userlevels/{id}", s.handleGetLevel)
+	s.mux.HandleFunc("PUT /api/userlevels/{id}", s.handleUpdateLevel)
+	s.mux.HandleFunc("DELETE /api/userlevels/{id}", s.handleDeleteLevel)
+	s.mux.HandleFunc("POST /api/userlevels/{id}/play", s.handleRecordLevelPlay)
 
 	static := http.FileServerFS(s.cfg.Assets)
 	s.mux.Handle("/", cacheStatic(static))
@@ -187,6 +204,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"levels":     game.MaxLevel(),
 		"online":     s.hub.Online(),
 		"scoresKept": s.cfg.Store.Count(),
+		"userLevels": s.cfg.Levels.Count(),
 		"activeRuns": s.runs.count(),
 		"time":       time.Now().UTC(),
 	})

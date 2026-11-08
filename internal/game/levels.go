@@ -267,6 +267,25 @@ type Campaign struct {
 	Levels     []Level              `json:"levels"`
 	Powerups   []PowerupInfo        `json:"powerups"`
 	Rules      Rules                `json:"rules"`
+
+	// Vocabularies, so the level editor builds its menus from the server
+	// rather than keeping a second copy that can drift out of step.
+	MusicTracks []string `json:"musicTracks"`
+	Backdrops   []string `json:"backdrops"`
+	Patterns    []string `json:"patterns"`
+	Sides       []string `json:"sides"`
+	Limits      Limits   `json:"limits"`
+}
+
+// Limits mirrors the validation bounds so the editor can mark a field before
+// the server has to reject it.
+type Limits struct {
+	MaxWaves         int `json:"maxWaves"`
+	MaxHazardKinds   int `json:"maxHazardKinds"`
+	MaxWaveCount     int `json:"maxWaveCount"`
+	MaxLevelEntities int `json:"maxLevelEntities"`
+	MaxNameRunes     int `json:"maxNameRunes"`
+	MaxTaglineRunes  int `json:"maxTaglineRunes"`
 }
 
 // PowerupInfo describes a pickup for the client renderer and the codex.
@@ -326,6 +345,19 @@ func BuildCampaign() Campaign {
 		Levels:     Levels,
 		Powerups:   powerupTable,
 		Rules:      DefaultRules,
+
+		MusicTracks: MusicTracks,
+		Backdrops:   Backdrops,
+		Patterns:    Patterns,
+		Sides:       Sides,
+		Limits: Limits{
+			MaxWaves:         MaxWaves,
+			MaxHazardKinds:   MaxHazardKinds,
+			MaxWaveCount:     MaxWaveCount,
+			MaxLevelEntities: MaxLevelEntities,
+			MaxNameRunes:     MaxNameRunes,
+			MaxTaglineRunes:  MaxTaglineRunes,
+		},
 	}
 }
 
