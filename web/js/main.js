@@ -14,6 +14,7 @@ const STORE = {
   best: 'starinvaders.best',
   muted: 'starinvaders.muted',
   unlocked: 'starinvaders.unlocked',
+  difficulty: 'starinvaders.difficulty',
 };
 
 function load(key, fallback) {
@@ -31,6 +32,7 @@ const state = {
   best: parseInt(load(STORE.best, '0'), 10) || 0,
   muted: load(STORE.muted, '0') === '1',
   unlocked: Math.max(1, parseInt(load(STORE.unlocked, '1'), 10) || 1),
+  difficulty: load(STORE.difficulty, 'normal') || 'normal',
   players: [],
   feed: [],
   chat: [],
@@ -46,6 +48,17 @@ const ui = new UI();
 let game = null;
 
 /* ------------------------------------------------------------------ helpers */
+
+/** "5, 9, 12, 16, 20 and 25", read off the campaign rather than hard-coded. */
+function bossLevelList() {
+  const ns = state.campaign.levels.filter((lv) => lv.boss).map((lv) => lv.number);
+  if (ns.length < 2) return ns.join('');
+  return `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`;
+}
+
+function currentTier() {
+  return (state.campaign.difficulties || []).find((d) => d.id === state.difficulty) || null;
+}
 
 function randomHandle() {
   const a = ['NOVA', 'ORION', 'VEGA', 'KITE', 'ZERO', 'ECHO', 'RAVEN', 'ATLAS', 'HALO', 'DELTA'];
@@ -106,6 +119,9 @@ function showMenu() {
       top: d.scores || [],
       levelCount: state.campaign.levels.length,
       canResume: state.unlocked > 1,
+      difficulties: state.campaign.difficulties || [],
+      difficulty: state.difficulty,
+      bossLevels: bossLevelList(),
     });
     wireMenuButtons();
   });
@@ -150,6 +166,7 @@ async function playCommunityLevel(id) {
 
   state.custom = entry;
   game.levels = [entry.level];
+  game.setDifficulty(state.difficulty);
   game.best = state.best;
   net.recordCommunityPlay(id);
   net.presence({ name: state.name, level: 1, score: 0, lives: game.rules.startingLives, status: 'playing' });
@@ -170,13 +187,29 @@ function wireMenuButtons() {
     net.presence({ name: typed, level: 0, score: 0, lives: 0, status: 'lobby' });
   });
 
+  document.querySelectorAll('[data-tier]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.difficulty = b.dataset.tier;
+      save(STORE.difficulty, state.difficulty);
+      game.setDifficulty(state.difficulty);
+      audio.uiClick();
+      document.querySelectorAll('[data-tier]').forEach((o) => o.classList.toggle('on', o === b));
+      const blurb = document.querySelector('.tier-blurb');
+      if (blurb) blurb.textContent = currentTier()?.blurb || '';
+    });
+  });
+
   document.getElementById('btnStart')?.addEventListener('click', () => startGame(1));
   document.getElementById('btnCommunity')?.addEventListener('click', showCommunity);
   document.getElementById('btnPractice')?.addEventListener('click', async () => {
     currentName();              // commit whatever is in the field first
     await audio.unlock();
     audio.uiClick();
-    ui.levelSelect({ levels: state.campaign.levels, unlocked: state.unlocked });
+    ui.levelSelect({
+      levels: state.campaign.levels,
+      unlocked: state.unlocked,
+      difficultyName: currentTier()?.name || '',
+    });
     document.getElementById('btnBackMenu')?.addEventListener('click', () => { audio.uiBack(); showMenu(); });
     document.querySelectorAll('[data-level]').forEach((b) => {
       b.addEventListener('click', () => startGame(parseInt(b.dataset.level, 10) || 1));
@@ -193,7 +226,8 @@ async function startGame(level) {
   ui.setHudVisible(true);
   state.custom = null;
   game.levels = state.campaign.levels;
-  await net.startRun(name, level);
+  game.setDifficulty(state.difficulty);
+  await net.startRun(name, level, state.difficulty);
   net.presence({ name, level, score: 0, lives: game.rules.startingLives, status: 'playing' });
   game.best = state.best;
   game.newGame(level);
@@ -298,7 +332,8 @@ const hooks = {
       save(STORE.best, state.best);
     }
     const levelName = state.campaign.levels[result.level - 1]?.name || '';
-    ui.gameEnd({ ...result, levelName, submitState: 'pending' });
+    const difficultyName = currentTier()?.name || '';
+    ui.gameEnd({ ...result, levelName, difficultyName, submitState: 'pending' });
     wireEndButtons();
 
     net.presence({
@@ -308,13 +343,13 @@ const hooks = {
 
     const submission = await net.submitScore({ ...result, name: state.name });
     if (submission && submission.entry) {
-      ui.gameEnd({ ...result, levelName, submitState: 'ok', rank: submission.rank });
+      ui.gameEnd({ ...result, levelName, difficultyName, submitState: 'ok', rank: submission.rank });
       wireEndButtons();
       ui.renderLeaderboard(submission.leaderboard, { myId: submission.entry.id, total: submission.stats?.gamesPlayed });
       ui.renderStats(submission.stats, net.connected ? net.online : null);
       await refreshLeaderboard(submission.entry.id);
     } else {
-      ui.gameEnd({ ...result, levelName, submitState: submission?.error || 'score not submitted' });
+      ui.gameEnd({ ...result, levelName, difficultyName, submitState: submission?.error || 'score not submitted' });
       wireEndButtons();
     }
   },
@@ -470,8 +505,13 @@ async function boot() {
 
   const canvas = document.getElementById('game');
   game = new Game(canvas, state.campaign, hooks);
+  game.setDifficulty(state.difficulty);
+  state.difficulty = game.difficulty.id;   // falls back if the stored tier is gone
   game.best = state.best;
   window.__starInvaders = game; // handy for debugging from the console
+
+  const brand = document.getElementById('brandSub');
+  if (brand) brand.textContent = `${state.campaign.levels.length} levels \u00b7 defence net online`;
 
   ui.renderCodex(state.campaign);
   ui.renderLevels(state.campaign.levels, 0);

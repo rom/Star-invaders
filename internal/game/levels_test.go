@@ -2,9 +2,9 @@ package game
 
 import "testing"
 
-func TestCampaignHasTwelveLevels(t *testing.T) {
-	if got := MaxLevel(); got != 12 {
-		t.Fatalf("MaxLevel() = %d, want 12", got)
+func TestCampaignHasTwentyFiveLevels(t *testing.T) {
+	if got := MaxLevel(); got != 25 {
+		t.Fatalf("MaxLevel() = %d, want 25", got)
 	}
 	for i, lv := range Levels {
 		if lv.Number != i+1 {
@@ -64,7 +64,10 @@ func TestHazardsAreNeverRequired(t *testing.T) {
 }
 
 func TestBossLevelsDeclareTheirBoss(t *testing.T) {
-	bossLevels := map[int]string{5: "warden", 9: "harbinger", 12: "dreadnought"}
+	bossLevels := map[int]string{
+		5: "warden", 9: "harbinger", 12: "dreadnought",
+		16: "leviathan", 20: "oracle", 25: "sovereign",
+	}
 	for _, lv := range Levels {
 		want, isBoss := bossLevels[lv.Number]
 		if isBoss {
@@ -84,6 +87,81 @@ func TestBossLevelsDeclareTheirBoss(t *testing.T) {
 		}
 		if lv.Boss != "" {
 			t.Errorf("level %d unexpectedly declares boss %q", lv.Number, lv.Boss)
+		}
+	}
+}
+
+// The campaign has to end on its boss, and the bosses have to be spread
+// through it rather than bunched at one end.
+func TestBossesArePacedThroughTheCampaign(t *testing.T) {
+	var bossAt []int
+	for _, lv := range Levels {
+		if lv.Boss != "" {
+			bossAt = append(bossAt, lv.Number)
+		}
+	}
+	if len(bossAt) < 5 {
+		t.Errorf("only %d boss levels in a %d level campaign: %v", len(bossAt), MaxLevel(), bossAt)
+	}
+	if bossAt[len(bossAt)-1] != MaxLevel() {
+		t.Errorf("the campaign ends on level %d, which is not a boss", MaxLevel())
+	}
+	for i := 1; i < len(bossAt); i++ {
+		if gap := bossAt[i] - bossAt[i-1]; gap > 6 {
+			t.Errorf("%d levels between bosses %d and %d", gap, bossAt[i-1], bossAt[i])
+		}
+	}
+}
+
+// Every archetype should earn its place: one that no level fields is dead
+// weight in the bestiary and in the codex.
+func TestEveryArchetypeIsUsed(t *testing.T) {
+	used := map[string]bool{}
+	for _, lv := range Levels {
+		for _, w := range lv.Waves {
+			used[w.Archetype] = true
+		}
+		for _, h := range lv.Hazards {
+			used[h.Archetype] = true
+		}
+	}
+	// Children spawned by a parent count as used.
+	for id, a := range Archetypes {
+		if used[id] {
+			if a.SplitInto != "" {
+				used[a.SplitInto] = true
+			}
+			if a.HatchInto != "" {
+				used[a.HatchInto] = true
+			}
+		}
+	}
+	for id := range Archetypes {
+		if !used[id] {
+			t.Errorf("archetype %q is never fielded by any level", id)
+		}
+	}
+}
+
+// A hatching attacker needs something real to hatch, on a sane cadence.
+func TestHatchingArchetypesAreCoherent(t *testing.T) {
+	for id, a := range Archetypes {
+		if a.HatchInto == "" {
+			if a.HatchEvery != 0 {
+				t.Errorf("%s has a hatch interval but nothing to hatch", id)
+			}
+			continue
+		}
+		child, ok := Archetypes[a.HatchInto]
+		if !ok {
+			t.Errorf("%s hatches unknown %q", id, a.HatchInto)
+			continue
+		}
+		if child.Kind == KindBoss {
+			t.Errorf("%s hatches a boss", id)
+		}
+		if a.HatchEvery < 1 {
+			t.Errorf("%s hatches every %.2fs, which is too often to survive", id, a.HatchEvery)
 		}
 	}
 }
@@ -125,8 +203,20 @@ func TestScoreCeilingIsMonotonicAndBounded(t *testing.T) {
 		}
 		prev = got
 	}
-	if MaxScore() != ScoreCeiling(MaxLevel()) {
-		t.Errorf("MaxScore() = %d, want %d", MaxScore(), ScoreCeiling(MaxLevel()))
+	// MaxScore bounds any run on any tier, so it tracks the most generously
+	// scored difficulty rather than the unscaled campaign ceiling.
+	hardest := Difficulties[0]
+	for _, d := range Difficulties {
+		if d.ScoreMul > hardest.ScoreMul {
+			hardest = d
+		}
+	}
+	if want := ScoreCeilingFor(1, MaxLevel(), hardest); MaxScore() != want {
+		t.Errorf("MaxScore() = %d, want %d (the %s ceiling)", MaxScore(), want, hardest.ID)
+	}
+	if MaxScore() < ScoreCeiling(MaxLevel()) {
+		t.Errorf("MaxScore() = %d is below the unscaled campaign ceiling %d",
+			MaxScore(), ScoreCeiling(MaxLevel()))
 	}
 }
 
@@ -153,14 +243,17 @@ func TestLevelByNumber(t *testing.T) {
 	if _, ok := LevelByNumber(0); ok {
 		t.Error("LevelByNumber(0) should not resolve")
 	}
-	if _, ok := LevelByNumber(13); ok {
-		t.Error("LevelByNumber(13) should not resolve")
+	if _, ok := LevelByNumber(MaxLevel()); !ok {
+		t.Error("the last level should resolve")
+	}
+	if _, ok := LevelByNumber(MaxLevel() + 1); ok {
+		t.Error("a level past the end should not resolve")
 	}
 }
 
 func TestBuildCampaignIsComplete(t *testing.T) {
 	c := BuildCampaign()
-	if c.LevelCount != len(c.Levels) || c.LevelCount != 12 {
+	if c.LevelCount != len(c.Levels) || c.LevelCount != 25 {
 		t.Errorf("campaign reports %d levels, has %d", c.LevelCount, len(c.Levels))
 	}
 	if len(c.Archetypes) == 0 || len(c.Powerups) == 0 {

@@ -115,10 +115,19 @@ export class Entity {
       case 'orbit': this._orbit(dt, g); break;
       case 'charge': this._charge(dt, g); break;
       case 'swarm': this._swarm(dt, g); break;
+      case 'strafe': this._strafe(dt, g); break;
       case 'drift': this._drift(dt, g); break;
       case 'float': this._float(dt, g); break;
       case 'boss': this._boss(dt, g); break;
       default: this._drift(dt, g); break;
+    }
+
+    if (this.arch.hatchInto && this.alive && this.targetable) {
+      this.hatchTimer = (this.hatchTimer ?? rand(1, this.arch.hatchEvery || 5)) - dt;
+      if (this.hatchTimer <= 0) {
+        this.hatchTimer = (this.arch.hatchEvery || 5) * rand(0.8, 1.25);
+        g.hatch(this);
+      }
     }
 
     if (this.fireRate > 0 && this.alive && this.arch.behavior !== 'boss') {
@@ -254,6 +263,17 @@ export class Entity {
     this.x = clamp(this.x, 16, g.W - 16);
   }
 
+  /** Crosses the field broadside, reversing at the walls and creeping down. */
+  _strafe(dt, g) {
+    if (!this.strafeDir) this.strafeDir = this.vx < 0 ? -1 : 1;
+    this.x += this.strafeDir * this.speed * dt;
+    this.y += 7 * dt;
+    const margin = this.r + 12;
+    if (this.x < margin) { this.x = margin; this.strafeDir = 1; }
+    if (this.x > g.W - margin) { this.x = g.W - margin; this.strafeDir = -1; }
+    if (this.y > g.H - 150) this.y = g.H - 150;
+  }
+
   _drift(dt, g) {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
@@ -279,9 +299,14 @@ export class Entity {
   /* ---------------------------------------------------------- boss logic */
 
   _boss(dt, g) {
+    // Phase thresholds are authored against the archetype's own hull, so
+    // they have to be read proportionally: difficulty scales a boss's max
+    // HP, and an absolute threshold would start a weakened boss in a late
+    // phase and hold a reinforced one in its opening one.
     const thresholds = this.arch.phaseHP || [];
+    const hullScale = this.maxHp / Math.max(1, this.arch.hp || 1);
     let phase = 0;
-    for (const th of thresholds) if (this.hp <= th) phase++;
+    for (const th of thresholds) if (this.hp <= th * hullScale) phase++;
     if (phase !== this.bossPhase) {
       this.bossPhase = phase;
       g.onBossPhase(this, phase);
@@ -318,7 +343,10 @@ export class Entity {
     this.fireTimer -= dt;
     if (this.fireTimer <= 0) {
       const name = patterns[Math.min(phase, patterns.length - 1)];
-      const cadence = 1 / Math.max(0.2, (this.arch.fireRate || 1) * (1 + phase * 0.18));
+      // Phases compound, and the late bosses have five of them: at 0.18 a
+      // phase the last one ran a full pattern every third of a second,
+      // which is not a fight, it is a wall.
+      const cadence = 1 / Math.max(0.2, (this.arch.fireRate || 1) * (1 + phase * 0.1));
       this.fireTimer = cadence * rand(0.8, 1.25);
       g.runBossPattern(this, name, phase);
     }

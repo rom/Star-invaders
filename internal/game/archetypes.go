@@ -37,6 +37,7 @@ const (
 	BehaviorDrift  = "drift"
 	BehaviorFloat  = "float"
 	BehaviorBoss   = "boss"
+	BehaviorStrafe = "strafe" // crosses the field at a fixed height, reversing
 )
 
 // Archetype is a single kind of attacker or space object.
@@ -64,9 +65,11 @@ type Archetype struct {
 	FrontArmor bool     `json:"frontArmor,omitempty"` // head-on hits do half damage
 	SplitInto  string   `json:"splitInto,omitempty"`  // spawns these on death
 	SplitCount int      `json:"splitCount,omitempty"`
-	Blast      float64  `json:"blast,omitempty"`    // death explosion radius that can hurt the player
-	Patterns   []string `json:"patterns,omitempty"` // boss phase attack scripts
-	PhaseHP    []int    `json:"phaseHP,omitempty"`  // HP thresholds that advance boss phases
+	HatchInto  string   `json:"hatchInto,omitempty"`  // spawns these while alive
+	HatchEvery float64  `json:"hatchEvery,omitempty"` // seconds between hatches
+	Blast      float64  `json:"blast,omitempty"`      // death explosion radius that can hurt the player
+	Patterns   []string `json:"patterns,omitempty"`   // boss phase attack scripts
+	PhaseHP    []int    `json:"phaseHP,omitempty"`    // HP thresholds that advance boss phases
 }
 
 // Archetypes is the complete bestiary, keyed by ID.
@@ -190,6 +193,66 @@ var Archetypes = map[string]Archetype{
 		Required: true,
 	},
 
+	"shrike": {
+		ID: "shrike", Name: "Shrike", Kind: KindAlien,
+		Codex:    "A scout that learned to commit. Dives harder and twice as often.",
+		HP:       2,
+		Score:    240,
+		Radius:   14,
+		Behavior: BehaviorDive,
+		Speed:    250,
+		Sprite:   "shrike", Color: "#ff9e00", Accent: "#6a2c00",
+		FireRate: 0.34, ProjectileKind: "bolt", ProjectileSpeed: 290,
+		Required: true,
+	},
+	"seraph": {
+		ID: "seraph", Name: "Seraph", Kind: KindAlien,
+		Codex:    "Wide, slow orbit and a lance that goes where you were going.",
+		HP:       3,
+		Score:    380,
+		Radius:   18,
+		Behavior: BehaviorOrbit,
+		Speed:    120,
+		Sprite:   "seraph", Color: "#e0aaff", Accent: "#3c096c",
+		FireRate: 0.36, ProjectileKind: "laser", ProjectileSpeed: 325,
+		Required: true,
+	},
+	"hive": {
+		ID: "hive", Name: "Brood Hive", Kind: KindAlien,
+		Codex:    "Hatches swarmlets for as long as it is allowed to live.",
+		HP:       8,
+		Score:    620,
+		Radius:   23,
+		Behavior: BehaviorMarch,
+		Sprite:   "hive", Color: "#9ef01a", Accent: "#2b4a0a",
+		FireRate: 0.18, ProjectileKind: "bolt", ProjectileSpeed: 210,
+		Required: true, HatchInto: "swarmer", HatchEvery: 4.5,
+	},
+	"revenant": {
+		ID: "revenant", Name: "Revenant", Kind: KindAlien,
+		Codex:    "Cloaks like a phantom, and leaves two more behind when it dies.",
+		HP:       4,
+		Score:    520,
+		Radius:   18,
+		Behavior: BehaviorPhase,
+		Speed:    70,
+		Sprite:   "revenant", Color: "#48cae4", Accent: "#023e8a",
+		FireRate: 0.4, ProjectileKind: "laser", ProjectileSpeed: 330,
+		Required: true, SplitInto: "phantom", SplitCount: 2,
+	},
+	"marauder": {
+		ID: "marauder", Name: "Marauder", Kind: KindAlien,
+		Codex:    "Crosses the field broadside, raking as it goes.",
+		HP:       5,
+		Score:    420,
+		Radius:   20,
+		Behavior: BehaviorStrafe,
+		Speed:    150,
+		Sprite:   "marauder", Color: "#f4a261", Accent: "#6a3010",
+		FireRate: 0.5, ProjectileKind: "spread", ProjectileSpeed: 225,
+		Required: true,
+	},
+
 	// ------------------------------------------- unknown space objects
 	"asteroid": {
 		ID: "asteroid", Name: "Asteroid", Kind: KindObject,
@@ -221,6 +284,28 @@ var Archetypes = map[string]Archetype{
 		Speed:    34,
 		Sprite:   "mine", Color: "#ff5d8f", Accent: "#590d22",
 		Blast: 58,
+	},
+	"iceshard": {
+		ID: "iceshard", Name: "Ice Shard", Kind: KindObject,
+		Codex:    "Shatters into smaller shards. Still just ice, still fatal.",
+		HP:       3,
+		Score:    110,
+		Radius:   19,
+		Behavior: BehaviorDrift,
+		Speed:    130,
+		Sprite:   "iceshard", Color: "#caf0f8", Accent: "#0077b6",
+		SplitInto: "comet", SplitCount: 2,
+	},
+	"gravmine": {
+		ID: "gravmine", Name: "Gravity Mine", Kind: KindObject,
+		Codex:    "A drift mine with a much larger opinion about personal space.",
+		HP:       3,
+		Score:    200,
+		Radius:   17,
+		Behavior: BehaviorFloat,
+		Speed:    28,
+		Sprite:   "gravmine", Color: "#c77dff", Accent: "#3c096c",
+		Blast: 104,
 	},
 	"derelict": {
 		ID: "derelict", Name: "Derelict Hulk", Kind: KindObject,
@@ -262,6 +347,34 @@ var Archetypes = map[string]Archetype{
 		Patterns: []string{"spiral", "lance", "blink", "summon"},
 		PhaseHP:  []int{68, 40, 17},
 	},
+	"leviathan": {
+		ID: "leviathan", Name: "The Leviathan", Kind: KindBoss,
+		Codex:    "Hull the size of a moonlet. Sweeps, beams, and keeps hatching.",
+		HP:       190,
+		Score:    15000,
+		Radius:   78,
+		Behavior: BehaviorBoss,
+		Speed:    62,
+		Sprite:   "leviathan", Color: "#52b788", Accent: "#081c15",
+		FireRate: 1.05, ProjectileKind: "plasma", ProjectileSpeed: 250,
+		Required: true,
+		Patterns: []string{"sweep", "beam", "summon", "spiral"},
+		PhaseHP:  []int{140, 92, 42},
+	},
+	"oracle": {
+		ID: "oracle", Name: "The Oracle", Kind: KindBoss,
+		Codex:    "Reads your line before you take it. Blinks, lances, repeats.",
+		HP:       250,
+		Score:    19000,
+		Radius:   72,
+		Behavior: BehaviorBoss,
+		Speed:    96,
+		Sprite:   "oracle", Color: "#ffd60a", Accent: "#4a3000",
+		FireRate: 1.25, ProjectileKind: "laser", ProjectileSpeed: 340,
+		Required: true,
+		Patterns: []string{"spiral", "blink", "lance", "beam", "rage"},
+		PhaseHP:  []int{190, 135, 80, 35},
+	},
 	"dreadnought": {
 		ID: "dreadnought", Name: "Void Dreadnought", Kind: KindBoss,
 		Codex:    "The thing the other twelve levels were a warning about.",
@@ -275,5 +388,19 @@ var Archetypes = map[string]Archetype{
 		Required: true,
 		Patterns: []string{"fan", "spiral", "beam", "summon", "rage"},
 		PhaseHP:  []int{116, 82, 50, 22},
+	},
+	"sovereign": {
+		ID: "sovereign", Name: "The Sovereign", Kind: KindBoss,
+		Codex:    "Whatever sent the other twenty-four. It does not improvise.",
+		HP:       380,
+		Score:    40000,
+		Radius:   98,
+		Behavior: BehaviorBoss,
+		Speed:    80,
+		Sprite:   "sovereign", Color: "#ff4d6d", Accent: "#1a001a",
+		FireRate: 1.5, ProjectileKind: "orb", ProjectileSpeed: 240,
+		Required: true,
+		Patterns: []string{"fan", "lance", "beam", "spiral", "summon", "rage"},
+		PhaseHP:  []int{320, 250, 180, 110, 50},
 	},
 }

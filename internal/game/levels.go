@@ -240,7 +240,7 @@ var Levels = []Level{
 		DropChance: 0.15, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet, PowerLife},
 	},
 	{
-		Number: 12, Name: "Void Dreadnought", Tagline: "FINAL BOSS - the thing the other eleven levels were warning you about.",
+		Number: 12, Name: "Void Dreadnought", Tagline: "BOSS - the thing the first eleven levels were warning you about.",
 		Music: "final", Backdrop: "singularity", StarSpeed: 2,
 		FormationStep: 0.44, FormationDrop: 18, GlobalFireMul: 1.15, Bunkers: 2,
 		Boss: "dreadnought",
@@ -256,6 +256,202 @@ var Levels = []Level{
 			{Archetype: "asteroid", Rate: 0.14, Max: 2, Delay: 20},
 		},
 		DropChance: 0.2, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet, PowerLife},
+	},
+	{
+		Number: 13, Name: "Shrike Country", Tagline: "Scouts that commit. They dive twice as often and pull out half as late.",
+		Music: "swarm", Backdrop: "ember", StarSpeed: 1.7,
+		FormationStep: 0.44, FormationDrop: 20, GlobalFireMul: 1.1, Bunkers: 3,
+		Waves: []Wave{
+			{Archetype: "shrike", Pattern: PatternGrid, Rows: 2, Cols: 7, Count: 14, Y: 0.14},
+			{Archetype: "grunt", Pattern: PatternGrid, Rows: 2, Cols: 8, Count: 16, Y: 0.3},
+			{Archetype: "shrike", Pattern: PatternStream, Count: 6, Delay: 12, Interval: 5, Side: "random"},
+		},
+		Hazards: []Hazard{
+			{Archetype: "comet", Rate: 0.28, Max: 4, Delay: 6},
+		},
+		DropChance: 0.14, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb},
+	},
+	{
+		Number: 14, Name: "Broodfall", Tagline: "Kill the hives first. Everything else is a consequence of not doing that.",
+		Music: "tension", Backdrop: "moss", StarSpeed: 1.45,
+		FormationStep: 0.46, FormationDrop: 20, GlobalFireMul: 1.05, Bunkers: 3,
+		Waves: []Wave{
+			{Archetype: "hive", Pattern: PatternArc, Count: 3, Y: 0.12},
+			{Archetype: "gunner", Pattern: PatternGrid, Rows: 2, Cols: 7, Count: 14, Y: 0.28},
+			{Archetype: "scout", Pattern: PatternStream, Count: 6, Delay: 14, Interval: 6, Side: "random"},
+		},
+		Hazards: []Hazard{
+			{Archetype: "asteroid", Rate: 0.18, Max: 3, Delay: 8},
+		},
+		DropChance: 0.15, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerBomb, PowerMagnet},
+	},
+	{
+		Number: 15, Name: "Broadside", Tagline: "Marauders cross the field raking as they go. Pick your lane.",
+		Music: "siege", Backdrop: "steel", StarSpeed: 1.5,
+		FormationStep: 0.44, FormationDrop: 21, GlobalFireMul: 1.1, Bunkers: 2,
+		Waves: []Wave{
+			{Archetype: "marauder", Pattern: PatternRandom, Count: 5, Y: 0.18},
+			{Archetype: "bulwark", Pattern: PatternGrid, Rows: 1, Cols: 6, Count: 6, Y: 0.1},
+			{Archetype: "gunner", Pattern: PatternGrid, Rows: 2, Cols: 7, Count: 14, Y: 0.32},
+		},
+		Hazards: []Hazard{
+			{Archetype: "iceshard", Rate: 0.22, Max: 3, Delay: 7},
+			{Archetype: "comet", Rate: 0.2, Max: 3, Delay: 14},
+		},
+		DropChance: 0.15, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb},
+	},
+	{
+		Number: 16, Name: "The Leviathan", Tagline: "BOSS - a hull the size of a moonlet, and it is still hatching.",
+		Music: "boss", Backdrop: "aurora", StarSpeed: 1.3,
+		FormationStep: 0.46, FormationDrop: 17, GlobalFireMul: 1, Bunkers: 2,
+		Boss: "leviathan",
+		Waves: []Wave{
+			{Archetype: "leviathan", Pattern: PatternBoss, Count: 1, Y: 0.23},
+			{Archetype: "hive", Pattern: PatternArc, Count: 2, Y: 0.42},
+			{Archetype: "shrike", Pattern: PatternStream, Count: 8, Delay: 16, Interval: 6, Side: "random"},
+		},
+		Hazards: []Hazard{
+			{Archetype: "comet", Rate: 0.24, Max: 4, Delay: 10},
+		},
+		DropChance: 0.2, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerLife, PowerBomb, PowerPierce},
+	},
+	{
+		Number: 17, Name: "Seraph Choir", Tagline: "Wide orbits and aimed lances. They shoot where you were going.",
+		Music: "tension", Backdrop: "violet", StarSpeed: 1.55,
+		FormationStep: 0.42, FormationDrop: 21, GlobalFireMul: 1.1, Bunkers: 2,
+		Waves: []Wave{
+			{Archetype: "seraph", Pattern: PatternRandom, Count: 6, Y: 0.2, Amp: 96},
+			{Archetype: "weaver", Pattern: PatternGrid, Rows: 2, Cols: 7, Count: 14, Y: 0.12, Amp: 38},
+			{Archetype: "phantom", Pattern: PatternArc, Count: 5, Y: 0.34, Delay: 5},
+		},
+		Hazards: []Hazard{
+			{Archetype: "gravmine", Rate: 0.14, Max: 3, Delay: 10},
+		},
+		DropChance: 0.16, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet},
+	},
+	{
+		Number: 18, Name: "Deadfall", Tagline: "Gravity mines. Give every one of them more room than feels necessary.",
+		Music: "tension", Backdrop: "void", StarSpeed: 1.65,
+		FormationStep: 0.42, FormationDrop: 21, GlobalFireMul: 1.15, Bunkers: 2,
+		Waves: []Wave{
+			{Archetype: "splitter", Pattern: PatternGrid, Rows: 2, Cols: 6, Count: 12, Y: 0.13},
+			{Archetype: "lancer", Pattern: PatternStream, Count: 7, Delay: 6, Interval: 5.5, Side: "top"},
+			{Archetype: "gunner", Pattern: PatternVee, Count: 7, Y: 0.3, Delay: 4},
+		},
+		Hazards: []Hazard{
+			{Archetype: "gravmine", Rate: 0.26, Max: 4, Delay: 5},
+			{Archetype: "iceshard", Rate: 0.2, Max: 3, Delay: 12},
+		},
+		DropChance: 0.16, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb},
+	},
+	{
+		Number: 19, Name: "Revenant Watch", Tagline: "Kill one and two more fade in where it stood.",
+		Music: "tension", Backdrop: "ice", StarSpeed: 1.6,
+		FormationStep: 0.4, FormationDrop: 22, GlobalFireMul: 1.15, Bunkers: 2,
+		Waves: []Wave{
+			{Archetype: "revenant", Pattern: PatternGrid, Rows: 2, Cols: 6, Count: 12, Y: 0.14},
+			{Archetype: "seraph", Pattern: PatternArc, Count: 4, Y: 0.3, Amp: 70, Delay: 6},
+			{Archetype: "shrike", Pattern: PatternStream, Count: 6, Delay: 14, Interval: 5, Side: "random"},
+		},
+		Hazards: []Hazard{
+			{Archetype: "comet", Rate: 0.3, Max: 4, Delay: 6},
+		},
+		DropChance: 0.17, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet},
+	},
+	{
+		Number: 20, Name: "The Oracle", Tagline: "BOSS - it reads your line before you take it.",
+		Music: "boss", Backdrop: "amber", StarSpeed: 1.4,
+		FormationStep: 0.42, FormationDrop: 17, GlobalFireMul: 1.05, Bunkers: 2,
+		Boss: "oracle",
+		Waves: []Wave{
+			{Archetype: "oracle", Pattern: PatternBoss, Count: 1, Y: 0.23},
+			{Archetype: "seraph", Pattern: PatternArc, Count: 4, Y: 0.42},
+			{Archetype: "revenant", Pattern: PatternStream, Count: 5, Delay: 18, Interval: 8, Side: "random"},
+		},
+		Hazards: []Hazard{
+			{Archetype: "gravmine", Rate: 0.16, Max: 3, Delay: 12},
+		},
+		DropChance: 0.2, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerLife, PowerBomb, PowerPierce},
+	},
+	{
+		Number: 21, Name: "Iron Tide", Tagline: "Armour in two ranks with a gun line behind it. Nothing here is quick.",
+		Music: "siege", Backdrop: "steel", StarSpeed: 1.5,
+		FormationStep: 0.4, FormationDrop: 22, GlobalFireMul: 1.2, Bunkers: 2,
+		Waves: []Wave{
+			{Archetype: "bulwark", Pattern: PatternGrid, Rows: 2, Cols: 6, Count: 12, Y: 0.11},
+			{Archetype: "marauder", Pattern: PatternRandom, Count: 4, Y: 0.24},
+			{Archetype: "gunner", Pattern: PatternGrid, Rows: 2, Cols: 8, Count: 16, Y: 0.34},
+		},
+		Hazards: []Hazard{
+			{Archetype: "asteroid", Rate: 0.22, Max: 3, Delay: 6},
+			{Archetype: "gravmine", Rate: 0.14, Max: 3, Delay: 16},
+		},
+		DropChance: 0.17, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet},
+	},
+	{
+		Number: 22, Name: "Hatchery", Tagline: "Four hives, and everything they have made since you arrived.",
+		Music: "swarm", Backdrop: "moss", StarSpeed: 1.75,
+		FormationStep: 0.4, FormationDrop: 22, GlobalFireMul: 1.15, Bunkers: 1,
+		Waves: []Wave{
+			{Archetype: "hive", Pattern: PatternArc, Count: 4, Y: 0.12},
+			{Archetype: "swarmer", Pattern: PatternStream, Count: 24, Delay: 3, Interval: 1.1, Side: "top"},
+			{Archetype: "shrike", Pattern: PatternGrid, Rows: 1, Cols: 6, Count: 6, Y: 0.3, Delay: 8},
+		},
+		Hazards: []Hazard{
+			{Archetype: "comet", Rate: 0.26, Max: 4, Delay: 10},
+		},
+		DropChance: 0.15, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet},
+	},
+	{
+		Number: 23, Name: "Cold Choir", Tagline: "Phantoms, revenants and seraphs. Half of it cannot be shot at all.",
+		Music: "tension", Backdrop: "ice", StarSpeed: 1.7,
+		FormationStep: 0.38, FormationDrop: 23, GlobalFireMul: 1.2, Bunkers: 1,
+		Waves: []Wave{
+			{Archetype: "revenant", Pattern: PatternGrid, Rows: 2, Cols: 5, Count: 10, Y: 0.12},
+			{Archetype: "phantom", Pattern: PatternGrid, Rows: 2, Cols: 7, Count: 14, Y: 0.28},
+			{Archetype: "seraph", Pattern: PatternRandom, Count: 5, Y: 0.2, Amp: 88, Delay: 6},
+		},
+		Hazards: []Hazard{
+			{Archetype: "iceshard", Rate: 0.3, Max: 4, Delay: 5},
+			{Archetype: "gravmine", Rate: 0.16, Max: 3, Delay: 14},
+		},
+		DropChance: 0.18, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet},
+	},
+	{
+		Number: 24, Name: "The Long Approach", Tagline: "Everything the fleet still has, in one corridor, all at once.",
+		Music: "final", Backdrop: "singularity", StarSpeed: 1.95,
+		FormationStep: 0.36, FormationDrop: 23, GlobalFireMul: 1.2, Bunkers: 2,
+		Waves: []Wave{
+			{Archetype: "bulwark", Pattern: PatternGrid, Rows: 1, Cols: 6, Count: 6, Y: 0.1},
+			{Archetype: "revenant", Pattern: PatternArc, Count: 5, Y: 0.22},
+			{Archetype: "hive", Pattern: PatternVee, Count: 3, Y: 0.34, Delay: 5},
+			{Archetype: "lancer", Pattern: PatternStream, Count: 8, Delay: 10, Interval: 4.5, Side: "top"},
+			{Archetype: "marauder", Pattern: PatternRandom, Count: 4, Y: 0.26, Delay: 18},
+		},
+		Hazards: []Hazard{
+			{Archetype: "comet", Rate: 0.3, Max: 4, Delay: 6},
+			{Archetype: "gravmine", Rate: 0.18, Max: 3, Delay: 14},
+			{Archetype: "asteroid", Rate: 0.16, Max: 2, Delay: 20},
+		},
+		DropChance: 0.2, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet, PowerLife},
+	},
+	{
+		Number: 25, Name: "The Sovereign", Tagline: "FINAL BOSS - whatever sent the other twenty-four.",
+		Music: "final", Backdrop: "singularity", StarSpeed: 2.1,
+		FormationStep: 0.36, FormationDrop: 18, GlobalFireMul: 1.15, Bunkers: 2,
+		Boss: "sovereign",
+		Waves: []Wave{
+			{Archetype: "sovereign", Pattern: PatternBoss, Count: 1, Y: 0.24},
+			{Archetype: "bulwark", Pattern: PatternArc, Count: 4, Y: 0.44},
+			{Archetype: "revenant", Pattern: PatternStream, Count: 6, Delay: 14, Interval: 7, Side: "random"},
+			{Archetype: "swarmer", Pattern: PatternStream, Count: 20, Delay: 20, Interval: 1.6, Side: "top"},
+		},
+		Hazards: []Hazard{
+			{Archetype: "comet", Rate: 0.3, Max: 4, Delay: 8},
+			{Archetype: "gravmine", Rate: 0.2, Max: 4, Delay: 16},
+			{Archetype: "iceshard", Rate: 0.16, Max: 3, Delay: 24},
+		},
+		DropChance: 0.22, Powerups: []string{PowerRapid, PowerSpread, PowerShield, PowerPierce, PowerBomb, PowerMagnet, PowerLife},
 	},
 }
 
@@ -275,6 +471,11 @@ type Campaign struct {
 	Patterns    []string `json:"patterns"`
 	Sides       []string `json:"sides"`
 	Limits      Limits   `json:"limits"`
+
+	// Difficulty tiers, easiest first. The client applies these as
+	// multipliers; the server uses the score multiplier to scale the
+	// anti-forgery ceiling.
+	Difficulties []Difficulty `json:"difficulties"`
 }
 
 // Limits mirrors the validation bounds so the editor can mark a field before
@@ -346,10 +547,11 @@ func BuildCampaign() Campaign {
 		Powerups:   powerupTable,
 		Rules:      DefaultRules,
 
-		MusicTracks: MusicTracks,
-		Backdrops:   Backdrops,
-		Patterns:    Patterns,
-		Sides:       Sides,
+		MusicTracks:  MusicTracks,
+		Backdrops:    Backdrops,
+		Patterns:     Patterns,
+		Sides:        Sides,
+		Difficulties: Difficulties,
 		Limits: Limits{
 			MaxWaves:         MaxWaves,
 			MaxHazardKinds:   MaxHazardKinds,
@@ -372,8 +574,29 @@ func LevelByNumber(n int) (Level, bool) {
 	return Levels[n-1], true
 }
 
-// MaxScore is the ceiling for a full twelve-level run.
-func MaxScore() int { return ScoreCeilingRange(1, len(Levels)) }
+// MaxScore is the ceiling for a full campaign on the most generously scored
+// tier. It bounds presence figures, which carry no difficulty of their own.
+func MaxScore() int {
+	best := 1.0
+	for _, d := range Difficulties {
+		if d.ScoreMul > best {
+			best = d.ScoreMul
+		}
+	}
+	return int(float64(ScoreCeilingRange(1, len(Levels))) * best)
+}
+
+// ScoreCeilingFor is the ceiling for a run over levels from..to on a given
+// difficulty. Scaling it with the tier's score multiplier is what keeps an
+// insane run from being rejected and a super easy one from being waved
+// through at normal's allowance.
+func ScoreCeilingFor(from, to int, d Difficulty) int {
+	mul := d.ScoreMul
+	if mul <= 0 {
+		mul = 1
+	}
+	return int(float64(ScoreCeilingRange(from, to)) * mul)
+}
 
 // ScoreCeiling returns the ceiling for a run that started on level 1.
 func ScoreCeiling(level int) int { return ScoreCeilingRange(1, level) }

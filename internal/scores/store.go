@@ -20,15 +20,16 @@ const maxKept = 500
 
 // Entry is one finished run.
 type Entry struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Score     int       `json:"score"`
-	Level     int       `json:"level"`
-	Kills     int       `json:"kills"`
-	Accuracy  float64   `json:"accuracy"`
-	Victory   bool      `json:"victory"`
-	Duration  float64   `json:"duration"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	Score      int       `json:"score"`
+	Level      int       `json:"level"`
+	Difficulty string    `json:"difficulty"`
+	Kills      int       `json:"kills"`
+	Accuracy   float64   `json:"accuracy"`
+	Victory    bool      `json:"victory"`
+	Duration   float64   `json:"duration"`
+	CreatedAt  time.Time `json:"createdAt"`
 }
 
 // Stats are the cross-player aggregates.
