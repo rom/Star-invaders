@@ -14,6 +14,7 @@ import (
 
 	"github.com/rom/star-invaders/internal/game"
 	"github.com/rom/star-invaders/internal/scores"
+	"github.com/rom/star-invaders/internal/userlevels"
 )
 
 func newTestServer(t *testing.T) *Server {
@@ -26,9 +27,14 @@ func newTestServer(t *testing.T) *Server {
 		"index.html": &fstest.MapFile{Data: []byte("<!doctype html><title>Star Invaders</title>")},
 		"js/main.js": &fstest.MapFile{Data: []byte("// game")},
 	}
+	levels, err := userlevels.New(filepath.Join(t.TempDir(), "userlevels.json"))
+	if err != nil {
+		t.Fatalf("userlevels.New: %v", err)
+	}
 	srv, err := New(Config{
 		Assets:  assets,
 		Store:   store,
+		Levels:  levels,
 		Logger:  log.New(io.Discard, "", 0),
 		Version: "test",
 	})

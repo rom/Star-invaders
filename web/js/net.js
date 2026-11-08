@@ -95,6 +95,26 @@ export class Net {
     }
   }
 
+  /** Levels built in the level editor and published to this server. */
+  async loadCommunityLevels(limit = 40) {
+    try {
+      return await getJSON(`/api/userlevels?limit=${encodeURIComponent(limit)}`);
+    } catch (err) {
+      console.warn('community levels unavailable', err);
+      return { levels: [], total: 0, offline: true };
+    }
+  }
+
+  async loadCommunityLevel(id) {
+    const data = await getJSON(`/api/userlevels/${encodeURIComponent(id)}`);
+    return data.entry;
+  }
+
+  /** Best-effort play counter for a community level. */
+  recordCommunityPlay(id) {
+    postJSON(`/api/userlevels/${encodeURIComponent(id)}/play`).catch(() => { /* not worth surfacing */ });
+  }
+
   async loadStats() {
     try {
       return await getJSON('/api/stats');

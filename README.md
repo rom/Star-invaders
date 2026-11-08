@@ -72,6 +72,21 @@ up as a formation thins out.
 tension, boss, swarm, siege, final) plus win and lose jingles, scheduled ahead
 of the audio clock so it stays in time. Nothing is streamed or downloaded.
 
+**A level editor.** `/editor.html` builds the same declarative script the
+shipped campaign is written in: waves, hazards and a handful of knobs. It
+previews where everything starts, runs the real game engine over the draft on
+demand, and publishes finished levels to the server for anyone to play.
+
+<img src="docs/screenshots/editor.png" alt="The level editor: a form of waves
+and hazards on the left, a preview of the opening layout and a list of checks
+on the right">
+
+The preview is drawn by the game's own spawn-plan builder rather than a
+second implementation, so it cannot drift away from what Playtest gives you.
+Drafts can start from a blank level or from any campaign level, import and
+export as JSON, and copy out as a Go literal to paste into
+`internal/game/levels.go` if a level is good enough to join the campaign.
+
 **The defence net.** Everyone connected shares a roster, a global activity feed
 ("ORION-42 destroyed The Warden on level 5") and a squadron chat channel. High
 scores are announced to everyone the moment they land.
@@ -139,6 +154,11 @@ without being hit pays a flawless bonus.
 | `POST` | `/api/presence` | report level/score/lives to the roster |
 | `POST` | `/api/events` | report a milestone (level cleared, boss down, extra life) |
 | `GET`/`POST` | `/api/chat` | squadron channel |
+| `GET` | `/api/userlevels` | levels built in the editor |
+| `POST` | `/api/userlevels` | publish one; returns a single-use edit key |
+| `POST` | `/api/userlevels/validate` | check a draft without storing it |
+| `GET`/`PUT`/`DELETE` | `/api/userlevels/{id}` | read, edit or remove one |
+| `POST` | `/api/userlevels/{id}/play` | play counter |
 
 ### Why SSE rather than WebSockets
 
@@ -146,6 +166,24 @@ The live layer is one-way fan-out plus a handful of small POSTs. Server-Sent
 Events cover that with `net/http` alone, reconnect on their own in the browser,
 and keep the project at **zero external Go dependencies**. The SSE connection
 *is* the presence record: when the request ends, the player leaves the roster.
+
+### How levels are validated
+
+A level is checked by one validator (`internal/game/validate.go`), used by the
+editor as you type, by the API before anything is stored, and by the test
+suite against the twelve shipped levels. It reports two kinds of problem:
+fatal ones that make a level unplayable or unwinnable - no attacker that has
+to die, a boss without the boss pattern, a required archetype used as a
+never-ending hazard, an entity budget a browser would struggle with - and
+advice, which the editor shows but does not block on.
+
+Submitted levels are normalised first: text trimmed, numbers clamped into
+range, unknown powerups dropped, and the `boss` field derived from the waves
+rather than trusted. An author cannot store a level the client could not run.
+
+Editing or removing a published level needs the edit key handed out once when
+it was published. The key is persisted but never served, so a listing cannot
+leak one.
 
 ### Where the game logic lives
 
@@ -180,6 +218,7 @@ is a property of the genre, not an oversight.
 main.go                  flags, embedded assets, graceful shutdown
 internal/game/           archetypes, the 12 level scripts, score ceilings
 internal/scores/         file-backed leaderboard + lifetime stats
+internal/userlevels/     file-backed shelf of levels built in the editor
 internal/hub/            SSE fan-out: roster, feed, chat
 internal/api/            HTTP routes, run tokens, rate limiting, sanitising
 web/index.html           shell
@@ -190,6 +229,8 @@ web/js/entities.js       behaviours, marching formation, destructible bunkers
 web/js/game.js           simulation, collision, scoring, renderer
 web/js/net.js            campaign fetch, SSE, presence, score submission
 web/js/ui.js             HUD, overlays, leaderboard, roster, codex
+web/js/plan.js           level script -> spawn queue, shared by game and editor
+web/js/editor.js         the level editor
 web/js/main.js           boot and wiring
 test/js/                 node --test suite for the formation and bunker logic
 docs/screenshots/        the images used above
@@ -199,8 +240,13 @@ docs/screenshots/        the images used above
 
 The score table is a single JSON file (`data/scores.json` by default), written
 atomically every 20 seconds and on shutdown. It keeps the top 500 runs plus
-lifetime aggregates. A corrupt file is moved aside rather than taking the
-server down with it. There is no database to run.
+lifetime aggregates. Levels built in the editor live beside it in
+`data/userlevels.json`, up to 300 of them. A corrupt file is moved aside
+rather than taking the server down with it. There is no database to run.
+
+Community levels are playable but never scored on the leaderboard: the
+server's anti-forgery ceilings are derived from the contents of the shipped
+levels, and a level anyone can author has no such bound.
 
 ## Browser support
 

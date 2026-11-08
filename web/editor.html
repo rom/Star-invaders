@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Build, preview, playtest and publish levels for Star Invaders.">
+<title>Level Editor &middot; Star Invaders</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/editor.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23060814'/%3E%3Cpath d='M8 12h3v-3h10v3h3v4h3v5h-5v-3h-3v3H13v-3h-3v3H5v-5h3z' fill='%23ffd166'/%3E%3C/svg%3E">
+</head>
+<body class="editor-body">
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <h1>Level Editor</h1>
+      <span class="brand-sub" id="draftState">new level</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="btnPlaytest" class="btn primary" type="button">Playtest</button>
+      <button id="btnPublish" class="btn" type="button">Publish</button>
+      <a class="btn ghost" href="/">Back to the game</a>
+    </div>
+  </header>
+
+  <main class="ed-stage">
+
+    <section class="ed-form" aria-label="Level settings">
+      <h2 class="ed-h">The level</h2>
+      <div class="ed-grid">
+        <label class="ed-field ed-wide">
+          <span>name</span>
+          <input id="fName" type="text" maxlength="48" placeholder="Cold Start" autocomplete="off">
+        </label>
+        <label class="ed-field ed-wide">
+          <span>tagline <em>shown on the briefing screen</em></span>
+          <input id="fTagline" type="text" maxlength="160" placeholder="They came out of the debris." autocomplete="off">
+        </label>
+        <label class="ed-field"><span>music</span><select id="fMusic"></select></label>
+        <label class="ed-field"><span>backdrop</span><select id="fBackdrop"></select></label>
+        <label class="ed-field"><span>star speed</span><input id="fStarSpeed" type="number" step="0.05" min="0" max="4"></label>
+        <label class="ed-field"><span>bunkers <em>0-4</em></span><input id="fBunkers" type="number" step="1" min="0" max="4"></label>
+        <label class="ed-field"><span>march step <em>seconds</em></span><input id="fStep" type="number" step="0.02" min="0.1" max="3"></label>
+        <label class="ed-field"><span>march drop <em>px</em></span><input id="fDrop" type="number" step="1" min="0" max="60"></label>
+        <label class="ed-field"><span>fire rate &times;</span><input id="fFireMul" type="number" step="0.05" min="0" max="3"></label>
+        <label class="ed-field"><span>drop chance <em>0-1</em></span><input id="fDropChance" type="number" step="0.01" min="0" max="1"></label>
+      </div>
+
+      <h2 class="ed-h">Pickups this level can drop</h2>
+      <div class="ed-chips" id="fPowerups"></div>
+
+      <h2 class="ed-h">
+        Waves <span class="pill" id="waveCount">0</span>
+        <button class="ed-add" id="btnAddWave" type="button">+ wave</button>
+      </h2>
+      <div class="ed-rows" id="waveRows"></div>
+      <p class="ed-note">Grid, arc and vee join the marching block. Stream trickles in from an edge. Random scatters across the upper field. Boss is a single scripted capital ship.</p>
+
+      <h2 class="ed-h">
+        Hazards <span class="pill" id="hazardCount">0</span>
+        <button class="ed-add" id="btnAddHazard" type="button">+ hazard</button>
+      </h2>
+      <div class="ed-rows" id="hazardRows"></div>
+      <p class="ed-note">Hazards trickle in forever and never gate completion, so only drifting objects can be one.</p>
+    </section>
+
+    <aside class="ed-side">
+      <h2 class="ed-h">Layout at the opening bell</h2>
+      <div class="ed-preview-wrap">
+        <canvas id="preview" width="900" height="660" aria-label="Preview of where this level's attackers start"></canvas>
+      </div>
+      <p class="ed-note" id="previewNote"></p>
+
+      <h2 class="ed-h">Checks</h2>
+      <ul class="ed-problems" id="problems"></ul>
+
+      <h2 class="ed-h">Composition</h2>
+      <ul class="ed-summary" id="summary"></ul>
+
+      <h2 class="ed-h">This draft</h2>
+      <div class="ed-actions">
+        <button class="btn" id="btnUpdate" type="button" hidden>Save changes</button>
+        <button class="btn ghost" id="btnDelete" type="button" hidden>Unpublish</button>
+        <button class="btn ghost" id="btnExport" type="button">Export JSON</button>
+        <button class="btn ghost" id="btnImport" type="button">Import JSON</button>
+        <button class="btn ghost" id="btnGo" type="button">Copy as Go</button>
+        <button class="btn ghost" id="btnReset" type="button">Start over</button>
+      </div>
+      <label class="ed-field ed-wide">
+        <span>your handle</span>
+        <input id="fAuthor" type="text" maxlength="18" placeholder="NOVA-14" autocomplete="off">
+      </label>
+
+      <h2 class="ed-h">Start from a campaign level</h2>
+      <select id="fCampaignPick"><option value="">pick one&hellip;</option></select>
+
+      <h2 class="ed-h">Published levels <span class="pill" id="publishedCount">0</span></h2>
+      <ul class="ed-published" id="published"></ul>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <span>Levels are checked by the same validator the shipped campaign is held to.</span>
+    <span class="footer-right"><a href="/api/userlevels">/api/userlevels</a> &middot; <a href="/">play</a></span>
+  </footer>
+</div>
+
+<div class="ed-modal" id="playtest" hidden>
+  <div class="ed-modal-inner">
+    <div class="ed-modal-bar">
+      <span id="playtestTitle">Playtest</span>
+      <span class="ed-readout" id="playtestReadout"></span>
+      <button class="btn ghost" id="btnStopPlaytest" type="button">Stop (Esc)</button>
+    </div>
+    <div class="ed-modal-stage" id="playtestStage">
+      <canvas id="playtestCanvas" width="900" height="660"></canvas>
+      <div class="ed-modal-overlay" id="playtestOverlay"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ed-toasts" id="toasts"></div>
+
+<script type="module" src="js/editor.js"></script>
+<noscript><p style="padding:2rem;color:#f88">The level editor needs JavaScript enabled.</p></noscript>
+</body>
+</html>

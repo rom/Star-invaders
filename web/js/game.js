@@ -10,8 +10,9 @@
 import { audio } from './audio.js';
 import { Entity, Formation, Bunker, rand, randInt, pickOne, clamp, lerp } from './entities.js';
 import { drawSprite, spriteFrames, backdropFor, rgba, lighten } from './sprites.js';
+import { VIEW, buildSpawnPlan } from './plan.js';
 
-export const VIEW = { W: 900, H: 660 };
+export { VIEW };
 
 const GROUND_Y = VIEW.H - 30;
 /** Hard ceiling on incoming fire, so the screen stays readable. */
@@ -139,8 +140,19 @@ export class Game {
 
   /* ---------------------------------------------------------------- input */
 
+  /** True when a key event belongs to something the user is typing into. */
+  static _isTyping(target) {
+    if (!target) return false;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+  }
+
   _bindInput() {
     this._onKeyDown = (e) => {
+      // The engine listens on window so the canvas never has to hold focus,
+      // which means it also hears typing elsewhere on the page - the level
+      // editor's forms, the squadron channel. Those are not flight controls.
+      if (Game._isTyping(e.target)) return;
       const k = e.key.toLowerCase();
       if (['arrowleft', 'arrowright', ' ', 'arrowup', 'arrowdown'].includes(k)) e.preventDefault();
       if (e.repeat) return;
@@ -152,9 +164,10 @@ export class Game {
       }
     };
     this._onKeyUp = (e) => this.keys.delete(e.key.toLowerCase());
+    this._onBlur = () => this.keys.clear();
     window.addEventListener('keydown', this._onKeyDown);
     window.addEventListener('keyup', this._onKeyUp);
-    window.addEventListener('blur', () => this.keys.clear());
+    window.addEventListener('blur', this._onBlur);
 
     // Pointer steering: drag anywhere on the canvas to fly, which also makes
     // the game playable on a trackpad or a touch screen.
@@ -185,7 +198,10 @@ export class Game {
     window.removeEventListener('resize', this._onResize);
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
+    window.removeEventListener('blur', this._onBlur);
     this.running = false;
+    this.hooks = {};
+    audio.stopMusic();
   }
 
   /* ------------------------------------------------------------ lifecycle */
@@ -265,7 +281,7 @@ export class Game {
       this.bunkers.push(new Bunker(x, PLAYER_Y - 96, 7));
     }
 
-    this.pending = this.buildSpawnPlan(lv);
+    this.pending = buildSpawnPlan(lv, this.archetypes);
     this.levelRequiredTotal = this.pending.filter((p) => p.arch.required).length;
     this.hazardAcc = (lv.hazards || []).map(() => 0);
     this.clearCountdown = null;
@@ -279,98 +295,6 @@ export class Game {
     this.hooks.onLevelIntro?.(lv, n);
     this.pushHud(true);
     this.start();
-  }
-
-  /** Expands the declarative wave list into a time-ordered spawn queue. */
-  buildSpawnPlan(lv) {
-    const plan = [];
-    for (const wave of lv.waves) {
-      const arch = this.archetypes[wave.archetype];
-      if (!arch) {
-        console.warn('unknown archetype in level script:', wave.archetype);
-        continue;
-      }
-      const baseY = (wave.y || 0.13) * VIEW.H;
-      const count = Math.max(1, wave.count || 1);
-      const opts = {
-        speedMul: wave.speedMul || 1,
-        fireMul: wave.fireMul || 1,
-        amp: wave.amp || 32,
-      };
-
-      switch (wave.pattern) {
-        case 'grid': {
-          const cols = wave.cols || Math.ceil(Math.sqrt(count));
-          const rows = wave.rows || Math.ceil(count / cols);
-          const spacingX = Math.min(78, (VIEW.W - 170) / Math.max(1, cols - 1 || 1));
-          const spacingY = Math.max(44, arch.radius * 2.6);
-          const startX = (VIEW.W - (cols - 1) * spacingX) / 2;
-          let made = 0;
-          for (let r = 0; r < rows && made < count; r++) {
-            for (let c = 0; c < cols && made < count; c++, made++) {
-              plan.push({
-                at: wave.delay || 0, arch, formation: true,
-                slotX: startX + c * spacingX, slotY: baseY + r * spacingY, opts,
-              });
-            }
-          }
-          break;
-        }
-        case 'arc': {
-          const span = VIEW.W - 190;
-          for (let i = 0; i < count; i++) {
-            const t = count === 1 ? 0.5 : i / (count - 1);
-            plan.push({
-              at: wave.delay || 0, arch, formation: true,
-              slotX: 95 + t * span,
-              slotY: baseY - Math.sin(t * Math.PI) * 42,
-              opts,
-            });
-          }
-          break;
-        }
-        case 'vee': {
-          const span = VIEW.W - 220;
-          const mid = (count - 1) / 2;
-          for (let i = 0; i < count; i++) {
-            const t = count === 1 ? 0.5 : i / (count - 1);
-            plan.push({
-              at: wave.delay || 0, arch, formation: true,
-              slotX: 110 + t * span,
-              slotY: baseY + Math.abs(i - mid) * 26,
-              opts,
-            });
-          }
-          break;
-        }
-        case 'random': {
-          for (let i = 0; i < count; i++) {
-            plan.push({
-              at: (wave.delay || 0) + i * 0.18, arch, formation: false,
-              x: rand(90, VIEW.W - 90), y: baseY + rand(-50, 70), opts,
-            });
-          }
-          break;
-        }
-        case 'boss': {
-          plan.push({ at: wave.delay || 0, arch, boss: true, y: baseY, opts });
-          break;
-        }
-        case 'stream':
-        default: {
-          const iv = wave.interval || 1.2;
-          for (let i = 0; i < count; i++) {
-            plan.push({
-              at: (wave.delay || 0) + i * iv, arch, formation: false,
-              side: wave.side || 'top', opts,
-            });
-          }
-          break;
-        }
-      }
-    }
-    plan.sort((a, b) => a.at - b.at);
-    return plan;
   }
 
   spawnFromPlan(item) {

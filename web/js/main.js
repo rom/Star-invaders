@@ -38,6 +38,8 @@ const state = {
   campaign: null,
   clearTimer: null,
   submitting: false,
+  /** The community level being played, if any. */
+  custom: null,
 };
 
 const ui = new UI();
@@ -92,6 +94,8 @@ async function refreshLeaderboard(highlightId = null) {
 
 function showMenu() {
   if (state.clearTimer) { clearInterval(state.clearTimer); state.clearTimer = null; }
+  state.custom = null;
+  game.levels = state.campaign.levels;
   ui.setHudVisible(false);
   game.showMenu();
   net.loadScores(3).then((d) => {
@@ -108,6 +112,51 @@ function showMenu() {
   ui.renderLevels(state.campaign.levels, 0);
 }
 
+async function showCommunity() {
+  await audio.unlock();
+  audio.uiClick();
+  const data = await net.loadCommunityLevels(40);
+  ui.community({ levels: data.levels || [], total: data.total || 0 });
+  document.getElementById('btnBackMenu')?.addEventListener('click', () => { audio.uiBack(); showMenu(); });
+  document.querySelectorAll('[data-community]').forEach((b) => {
+    b.addEventListener('click', () => playCommunityLevel(b.dataset.community));
+  });
+}
+
+/**
+ * Runs a level built in the editor. The campaign leaderboard is scored
+ * against the shipped levels - their contents are what the server's score
+ * ceilings are derived from - so a community run is never submitted.
+ */
+async function playCommunityLevel(id) {
+  let entry = null;
+  try {
+    entry = await net.loadCommunityLevel(id);
+  } catch { /* reported below */ }
+  if (!entry) {
+    // Falling back to the menu matters: a stale share link would otherwise
+    // leave the page on nothing at all, with the toast hidden inside the
+    // HUD we have not shown yet.
+    ui.toast('that level is no longer there', 'bad');
+    showMenu();
+    return false;
+  }
+
+  await audio.unlock();
+  audio.setMuted(state.muted);
+  audio.uiClick();
+  ui.hideOverlay();
+  ui.setHudVisible(true);
+
+  state.custom = entry;
+  game.levels = [entry.level];
+  game.best = state.best;
+  net.recordCommunityPlay(id);
+  net.presence({ name: state.name, level: 1, score: 0, lives: game.rules.startingLives, status: 'playing' });
+  game.newGame(1);
+  return true;
+}
+
 function wireMenuButtons() {
   // Capture the handle as it is typed. Reading it only when Launch is
   // pressed loses it the moment the panel is replaced - going via Level
@@ -122,6 +171,7 @@ function wireMenuButtons() {
   });
 
   document.getElementById('btnStart')?.addEventListener('click', () => startGame(1));
+  document.getElementById('btnCommunity')?.addEventListener('click', showCommunity);
   document.getElementById('btnPractice')?.addEventListener('click', async () => {
     currentName();              // commit whatever is in the field first
     await audio.unlock();
@@ -141,6 +191,8 @@ async function startGame(level) {
   audio.uiClick();
   ui.hideOverlay();
   ui.setHudVisible(true);
+  state.custom = null;
+  game.levels = state.campaign.levels;
   await net.startRun(name, level);
   net.presence({ name, level, score: 0, lives: game.rules.startingLives, status: 'playing' });
   game.best = state.best;
@@ -178,6 +230,10 @@ const hooks = {
   onLevelBegin() { ui.hideOverlay(); },
 
   onLevelClear(info) {
+    if (state.custom) {
+      game.nextLevel();           // one level campaign: this ends the run
+      return;
+    }
     ui.markCleared(info.level);
     if (info.level + 1 > state.unlocked) {
       state.unlocked = Math.min(state.campaign.levels.length, info.level + 1);
@@ -219,6 +275,24 @@ const hooks = {
 
   async onGameEnd(result) {
     if (state.clearTimer) { clearInterval(state.clearTimer); state.clearTimer = null; }
+
+    if (state.custom) {
+      const entry = state.custom;
+      ui.customResult({
+        victory: result.victory,
+        levelName: entry.level.name,
+        author: entry.author,
+        score: result.score,
+        kills: result.kills,
+        accuracy: result.accuracy,
+        duration: result.duration,
+      });
+      document.getElementById('btnRetry')?.addEventListener('click', () => playCommunityLevel(entry.id));
+      document.getElementById('btnMenu')?.addEventListener('click', () => { audio.uiBack(); showMenu(); });
+      net.presence({ name: state.name, level: 1, score: result.score, lives: 0, status: 'dead' });
+      return;
+    }
+
     if (result.score > state.best) {
       state.best = result.score;
       save(STORE.best, state.best);
@@ -405,6 +479,15 @@ async function boot() {
 
   wireNet();
   net.connect(state.name, state.best);
+
+  const shared = new URLSearchParams(location.search).get('level');
+  if (shared) {
+    net.loadStats().then((s) => s && ui.renderStats(s, net.connected ? net.online : null));
+    await refreshLeaderboard();
+    if (await playCommunityLevel(shared)) return;
+    return;   // playCommunityLevel fell back to the menu itself
+  }
+
   net.loadStats().then((s) => s && ui.renderStats(s, net.connected ? net.online : null));
   await refreshLeaderboard();
 
