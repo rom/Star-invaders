@@ -1,0 +1,14 @@
+# Build output
+/bin/
+/star-invaders
+*.exe
+
+# Runtime data (high score database)
+/data/*.json
+/data/*.json.tmp
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
