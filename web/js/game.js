@@ -77,8 +77,11 @@ export class Game {
     this.running = false;
     this.hudTimer = 0;
 
+    // The hitbox is deliberately smaller than the drawn ship: the sprite is
+    // 40px wide but most of that is wing, and players read a shot through the
+    // wings as a near miss, not a hit.
     this.player = {
-      x: VIEW.W / 2, y: PLAYER_Y, vx: 0, r: 15,
+      x: VIEW.W / 2, y: PLAYER_Y, vx: 0, r: 11,
       cooldown: 0, invuln: 0, shield: false, thrust: 0, hitFlash: 0,
     };
     this.active = { rapid: 0, spread: 0, pierce: 0, magnet: 0 };
@@ -236,8 +239,13 @@ export class Game {
     // produce a bullet-hell curtain rather than the sparse, readable fire of
     // an invaders game, so the swarm as a whole gets a shot budget and the
     // individual fire rates only decide who gets to use it.
-    this.shotInterval = Math.max(0.17, 0.5 - 0.022 * (n - 1)) / this.fireMul;
+    this.shotInterval = Math.max(0.18, 0.56 - 0.023 * (n - 1)) / this.fireMul;
     this.shotGate = this.shotInterval;
+    // Perfectly aimed fire from a dozen shooters at once is the least fair
+    // thing in the game: there is no read on it, only a dice roll. Aimed
+    // shots get a scatter that tightens as the campaign goes on, so later
+    // gunnery feels sharper without earlier levels feeling arbitrary.
+    this.aimScatter = Math.max(0.035, 0.11 - 0.006 * (n - 1));
 
     this.player.x = VIEW.W / 2;
     this.player.vx = 0;
@@ -258,7 +266,9 @@ export class Game {
     }
 
     this.pending = this.buildSpawnPlan(lv);
+    this.levelRequiredTotal = this.pending.filter((p) => p.arch.required).length;
     this.hazardAcc = (lv.hazards || []).map(() => 0);
+    this.clearCountdown = null;
 
     this.state = STATES.INTRO;
     this.introTimer = 2.9;
@@ -528,7 +538,7 @@ export class Game {
     if (this.boss && !this.boss.alive) this.boss = null;
 
     this.checkInvasion();
-    this.checkLevelComplete();
+    this.checkLevelComplete(dt);
 
     this.hudTimer -= dt;
     if (this.hudTimer <= 0) { this.hudTimer = 0.1; this.pushHud(); }
@@ -640,7 +650,11 @@ export class Game {
     for (const e of [...this.entities]) {
       if (!e.alive) continue;
       if (e.arch.kind === 'boss') {
-        e.damage(Math.max(4, Math.round(e.maxHp * 0.08)), this);
+        // The return value matters: without it a bomb could land the killing
+        // blow and the boss would simply vanish, unscored and unannounced.
+        if (e.damage(Math.max(4, Math.round(e.maxHp * 0.08)), this)) {
+          this.killEntity(e, true);
+        }
         continue;
       }
       this.burst(e.x, e.y, e.color, 14, 1.1);
@@ -669,7 +683,9 @@ export class Game {
 
   enemyFire(e) {
     const base = e.projectileSpeed;
-    const toPlayer = Math.atan2(this.player.y - e.y, this.player.x - e.x);
+    const scatter = this.aimScatter || 0.08;
+    const toPlayer = Math.atan2(this.player.y - e.y, this.player.x - e.x)
+      + rand(-scatter, scatter);
     const add = (vx, vy, kind, r = 5, dmg = 1) => {
       this.enemyBullets.push({ x: e.x, y: e.y + e.r * 0.5, vx, vy, r, kind, dmg, life: 6, color: e.color });
     };
@@ -1122,12 +1138,25 @@ export class Game {
     }
   }
 
-  checkLevelComplete() {
-    if (this.pending.length > 0) return;
-    if (this.boss && this.boss.alive) return;
-    const remaining = this.entities.filter((e) => e.alive && e.required).length;
-    if (remaining > 0) return;
-    if (this.timers.length > 0 && this.levelTime < 2) return;
+  checkLevelComplete(dt = 0) {
+    const done = this.pending.length === 0
+      && !(this.boss && this.boss.alive)
+      && this.entities.filter((e) => e.alive && e.required).length === 0;
+
+    if (!done) {
+      this.clearCountdown = null;
+      return;
+    }
+    // Hold the overlay back for a beat so the last explosion - and a boss's
+    // whole death sequence, which is a chain of scheduled blasts - actually
+    // plays instead of being cut off by the scorecard.
+    if (this.clearCountdown === null) {
+      this.clearCountdown = this.timers.length > 0 ? 1.9 : 0.65;
+      return;
+    }
+    this.clearCountdown -= dt;
+    if (this.clearCountdown > 0) return;
+    this.clearCountdown = null;
 
     // Level cleared.
     const lvl = this.levelNumber;
@@ -1234,8 +1263,9 @@ export class Game {
     const boss = this.boss && this.boss.alive
       ? { name: this.boss.arch.name, hp: this.boss.hp, maxHp: this.boss.maxHp }
       : null;
-    const total = this.formation ? this.formation.initialCount : 0;
-    const remaining = this.entities.filter((e) => e.alive && e.required).length + this.pending.filter((p) => p.arch.required).length;
+    const remaining = this.entities.filter((e) => e.alive && e.required).length
+      + this.pending.filter((p) => p.arch.required).length;
+    const total = Math.max(this.levelRequiredTotal || 0, remaining);
     this.hooks.onHud?.({
       score: this.stats.score,
       best: Math.max(this.best, this.stats.score),
@@ -1245,7 +1275,7 @@ export class Game {
       levelName: this.level?.name || '',
       levelCount: this.levels.length,
       remaining,
-      total: Math.max(total, remaining),
+      total,
       combo: this.stats.combo,
       shield: this.player.shield,
       powerups: Object.entries(this.active)

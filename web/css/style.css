@@ -143,8 +143,18 @@ a:hover { text-decoration: underline; }
 
 .screen-wrap {
   position: relative;
+  /* The play field has a fixed 900x660 shape. Sizing it by width alone makes
+     it taller than a short viewport - a phone in landscape loses the HUD and
+     the ship off the bottom - so the width is also capped by the height that
+     is actually available. */
   width: 100%;
+  width: min(100%, calc((100vh - 190px) * 1.3637));
+  width: min(100%, calc((100dvh - 190px) * 1.3637));
+  margin-inline: auto;
   aspect-ratio: 900 / 660;
+  /* The HUD sizes itself against the play field rather than the viewport, so
+     it stays in proportion whether the field is 1100px wide or 350px. */
+  container-type: inline-size;
   background: #02030a;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
@@ -179,8 +189,8 @@ a:hover { text-decoration: underline; }
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  padding: 10px 14px;
-  font-size: clamp(0.6rem, 1.1vw, 0.8rem);
+  padding: clamp(6px, 1.5cqw, 14px) clamp(8px, 2cqw, 18px);
+  font-size: clamp(0.5rem, 1.55cqw, 0.82rem);
   letter-spacing: 0.08em;
 }
 
@@ -196,11 +206,16 @@ a:hover { text-decoration: underline; }
 .hud-v.small { font-size: 1em; color: var(--green); }
 #hudLevelName { color: var(--amber); letter-spacing: 0.16em; }
 
-.wave-bar { width: min(240px, 34vw); height: 4px; margin-top: 4px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+/* A hairline across the very top of the field: full width, no vertical
+   space taken from the HUD stack. */
+.wave-bar {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; background: rgba(255,255,255,0.1); overflow: hidden;
+}
 .wave-bar span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: width 0.25s ease-out; }
 
-.lives { display: flex; gap: 6px; align-items: center; }
-.life-icon { width: 20px; height: 14px; background: var(--cyan); clip-path: polygon(50% 0, 62% 42%, 100% 62%, 100% 100%, 66% 86%, 50% 96%, 34% 86%, 0 100%, 0 62%, 38% 42%); box-shadow: 0 0 8px rgba(76,201,240,0.6); }
+.lives { display: flex; gap: clamp(3px, 0.6cqw, 7px); align-items: center; }
+.life-icon { width: clamp(12px, 2.2cqw, 21px); height: clamp(8px, 1.5cqw, 15px); background: var(--cyan); clip-path: polygon(50% 0, 62% 42%, 100% 62%, 100% 100%, 66% 86%, 50% 96%, 34% 86%, 0 100%, 0 62%, 38% 42%); box-shadow: 0 0 8px rgba(76,201,240,0.6); }
 .life-icon.spent { background: rgba(255,255,255,0.14); box-shadow: none; }
 
 .powerups { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
@@ -217,15 +232,15 @@ a:hover { text-decoration: underline; }
 .combo { color: var(--amber); font-size: 1.1em; min-width: 72px; text-align: right; text-shadow: 0 0 10px rgba(255,209,102,0.6); }
 
 .boss-bar {
-  width: min(460px, 52%);
-  margin-top: 7px;
+  width: min(460px, 56cqw);
+  margin-top: clamp(4px, 0.9cqw, 8px);
   display: flex; flex-direction: column; align-items: center; gap: 3px;
 }
 .boss-name { color: var(--pink); text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.9em; text-shadow: 0 0 12px rgba(247,37,133,0.7); }
-.boss-track { width: 100%; height: 9px; background: rgba(0,0,0,0.6); border: 1px solid rgba(247,37,133,0.5); border-radius: 6px; overflow: hidden; }
+.boss-track { width: 100%; height: clamp(5px, 1.1cqw, 10px); background: rgba(0,0,0,0.6); border: 1px solid rgba(247,37,133,0.5); border-radius: 6px; overflow: hidden; }
 .boss-track span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ff006e, var(--amber)); transition: width 0.18s linear; }
 
-.toast-stack { position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.toast-stack { position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%); display: flex; flex-direction: column; gap: clamp(3px, 0.7cqw, 7px); align-items: center; }
 .toast {
   padding: 6px 14px; border-radius: 999px;
   background: rgba(5,6,15,0.82); border: 1px solid var(--line-strong);
@@ -242,7 +257,7 @@ a:hover { text-decoration: underline; }
 .overlay {
   position: absolute; inset: 0;
   display: none;
-  align-items: center; justify-content: center;
+  justify-content: center;
   padding: clamp(14px, 3vw, 34px);
   background: radial-gradient(90% 90% at 50% 40%, rgba(5,6,15,0.82), rgba(2,3,10,0.96));
   backdrop-filter: blur(3px);
@@ -251,7 +266,15 @@ a:hover { text-decoration: underline; }
 }
 .overlay.show { display: flex; }
 
-.panel { width: min(640px, 100%); display: flex; flex-direction: column; gap: 14px; align-items: center; }
+/* Centring with `margin: auto` rather than `align-items: center`: when the
+   panel is taller than the overlay - a phone in portrait, say - flex
+   centring pushes the top out of reach of the scrollbar and the title is
+   simply lost. */
+.panel {
+  width: min(640px, 100%);
+  margin: auto;
+  display: flex; flex-direction: column; gap: 14px; align-items: center;
+}
 .panel h2 {
   margin: 0; font-size: clamp(1.3rem, 3.4vw, 2.1rem);
   letter-spacing: 0.2em; text-transform: uppercase; color: #fff;
@@ -312,10 +335,13 @@ kbd {
 /* ----------------------------------------------------------- touch controls */
 
 .touch { position: absolute; inset: auto 0 0 0; display: grid; grid-template-columns: 1fr 1fr 1.3fr 1fr; gap: 8px; padding: 10px; }
+/* The pad sits over the play field, so it must get out of the way whenever
+   an overlay (menu, level intro, pause, scorecard) is up. */
+.overlay.show ~ .touch { display: none; }
 .tpad {
   font-family: var(--mono); font-size: 1.1rem;
   padding: 16px 0; border-radius: 12px;
-  color: var(--ink); background: rgba(10,13,30,0.72);
+  color: var(--ink); background: rgba(10,13,30,0.42);
   border: 1px solid var(--line-strong);
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
 }
@@ -453,6 +479,22 @@ kbd {
 
 @media (hover: none) and (pointer: coarse) {
   .controls-hint { display: none; }
+}
+
+/* Landscape on a phone: strip the chrome and give the height to the game. */
+@media (orientation: landscape) and (max-height: 560px) {
+  #app { padding: 6px 8px 8px; gap: 8px; }
+  .topbar { padding: 6px 12px; }
+  .topbar-stats, .footer, .controls-hint, .brand-sub { display: none; }
+  .brand h1 { font-size: 1rem; }
+  .screen-wrap {
+    width: min(100%, calc((100vh - 84px) * 1.3637));
+    width: min(100%, calc((100dvh - 84px) * 1.3637));
+  }
+  .touch { padding: 6px; gap: 6px; }
+  .tpad { padding: 9px 0; font-size: 0.86rem; }
+  .tpad.fire, .tpad.bomb { font-size: 0.68rem; }
+  .rail { max-height: 50vh; }
 }
 
 @media (prefers-reduced-motion: reduce) {

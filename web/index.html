@@ -41,6 +41,7 @@
         <canvas id="game" width="900" height="660" aria-label="Star Invaders play field"></canvas>
 
         <div class="hud" id="hud" aria-hidden="true">
+          <div class="wave-bar" title="Hostiles remaining"><span id="waveFill"></span></div>
           <div class="hud-row hud-top">
             <div class="hud-block">
               <span class="hud-k">score</span>
@@ -49,7 +50,6 @@
             <div class="hud-block hud-center">
               <span class="hud-k" id="hudLevelName">standby</span>
               <span class="hud-v small" id="hudLevel">level &mdash; / 12</span>
-              <div class="wave-bar" title="Hostiles remaining"><span id="waveFill"></span></div>
               <div class="boss-bar" id="bossBar" hidden>
                 <span class="boss-name" id="bossName">boss</span>
                 <div class="boss-track"><span id="bossFill"></span></div>

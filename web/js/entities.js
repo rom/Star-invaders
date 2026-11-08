@@ -64,7 +64,7 @@ export class Entity {
     this.rotation = 0;
     this.spin = 0;
     this.state = 'idle';
-    this.stateTimer = rand(2.5, 9);
+    this.stateTimer = rand(4, 14);
     this.bossPhase = 0;
     this.patternStep = 0;
     this.entering = false;
@@ -210,7 +210,7 @@ export class Entity {
     this.y = lerp(this.y, ty, 3 * dt);
     if (Math.abs(this.y - ty) < 6 && Math.abs(this.x - tx) < 10) {
       this.state = 'slot';
-      this.stateTimer = rand(3, 9);
+      this.stateTimer = rand(5, 15);
     }
   }
 
