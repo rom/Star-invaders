@@ -91,7 +91,7 @@ func TestLevelsEndpointServesTheCampaign(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &c); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(c.Levels) != 12 || len(c.Archetypes) == 0 {
+	if len(c.Levels) != game.MaxLevel() || len(c.Archetypes) == 0 {
 		t.Errorf("campaign looks wrong: %d levels, %d archetypes", len(c.Levels), len(c.Archetypes))
 	}
 	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
@@ -113,7 +113,14 @@ func TestStaticAssetsAreServed(t *testing.T) {
 // startRun mints a token and, for the duration checks, backdates it.
 func startRun(t *testing.T, srv *Server, name string, startLevel int, age time.Duration) string {
 	t.Helper()
-	w, body := do(t, srv, "POST", "/api/runs", map[string]any{"name": name, "startLevel": startLevel})
+	return startRunOn(t, srv, name, startLevel, "normal", age)
+}
+
+func startRunOn(t *testing.T, srv *Server, name string, startLevel int, difficulty string, age time.Duration) string {
+	t.Helper()
+	w, body := do(t, srv, "POST", "/api/runs", map[string]any{
+		"name": name, "startLevel": startLevel, "difficulty": difficulty,
+	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("run start status %d: %s", w.Code, w.Body.String())
 	}
@@ -482,5 +489,111 @@ func TestClientIPPrefersForwardedHeaders(t *testing.T) {
 	r.Header.Set("X-Forwarded-For", "1.1.1.1, 2.2.2.2")
 	if got := clientIP(r); got != "1.1.1.1" {
 		t.Errorf("clientIP = %q", got)
+	}
+}
+
+// ---------------------------------------------------------------- difficulty
+
+func TestRunRecordsTheChosenTier(t *testing.T) {
+	srv := newTestServer(t)
+	w, body := do(t, srv, "POST", "/api/runs", map[string]any{"name": "A", "difficulty": "insane"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d", w.Code)
+	}
+	if body["difficulty"] != "insane" {
+		t.Errorf("difficulty = %v", body["difficulty"])
+	}
+	// An unknown tier falls back rather than failing the launch.
+	_, body = do(t, srv, "POST", "/api/runs", map[string]any{"name": "A", "difficulty": "nightmare"})
+	if body["difficulty"] != "normal" {
+		t.Errorf("unknown tier = %v, want the default", body["difficulty"])
+	}
+}
+
+// The ceiling has to follow the tier, or an honest insane run reads as a
+// forgery and an inflated easy one slips through.
+func TestCeilingScalesWithTheTier(t *testing.T) {
+	srv := newTestServer(t)
+	normalCeiling := game.ScoreCeilingRange(1, 3)
+
+	// A score above normal's ceiling is fine on insane.
+	id := startRunOn(t, srv, "HARDCORE", 1, "insane", time.Hour)
+	w, _ := do(t, srv, "POST", "/api/scores", map[string]any{
+		"runId": id, "name": "HARDCORE", "score": normalCeiling + 1000, "level": 3,
+		"kills": 100, "shots": 200, "hits": 150, "duration": 600,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("insane run status %d, want 201: %s", w.Code, w.Body.String())
+	}
+
+	// The same score on super easy is not.
+	id = startRunOn(t, srv, "CASUAL", 1, "supereasy", time.Hour)
+	w, _ = do(t, srv, "POST", "/api/scores", map[string]any{
+		"runId": id, "name": "CASUAL", "score": normalCeiling + 1000, "level": 3,
+		"kills": 100, "shots": 200, "hits": 150, "duration": 600,
+	})
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("super easy run status %d, want 422", w.Code)
+	}
+}
+
+// The tier is fixed at launch, so a run cannot be replayed as a harder one
+// to borrow its score allowance.
+func TestTierCannotBeChangedAtSubmission(t *testing.T) {
+	srv := newTestServer(t)
+	id := startRunOn(t, srv, "A", 1, "supereasy", time.Hour)
+	w, _ := do(t, srv, "POST", "/api/scores", map[string]any{
+		"runId": id, "name": "A", "score": 1000, "level": 1,
+		"kills": 5, "shots": 10, "hits": 5, "duration": 60,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status %d: %s", w.Code, w.Body.String())
+	}
+	if got := srv.cfg.Store.Top(1)[0].Difficulty; got != "supereasy" {
+		t.Errorf("stored difficulty = %q, want the one chosen at launch", got)
+	}
+}
+
+func TestScoreEntryAndFeedCarryTheTier(t *testing.T) {
+	srv := newTestServer(t)
+	id := startRunOn(t, srv, "PILOT", 1, "hard", time.Hour)
+	_, body := do(t, srv, "POST", "/api/scores", map[string]any{
+		"runId": id, "name": "PILOT", "score": 5000, "level": 2,
+		"kills": 30, "shots": 60, "hits": 40, "duration": 300,
+	})
+	entry := body["entry"].(map[string]any)
+	if entry["difficulty"] != "hard" {
+		t.Errorf("entry difficulty = %v", entry["difficulty"])
+	}
+	feed := srv.hub.Feed()
+	last := feed[len(feed)-1]
+	if !strings.Contains(last.Text, "hard") {
+		t.Errorf("feed line should name a non-default tier: %q", last.Text)
+	}
+
+	// A normal run should not clutter the feed with its tier.
+	id = startRunOn(t, srv, "PILOT2", 1, "normal", time.Hour)
+	do(t, srv, "POST", "/api/scores", map[string]any{
+		"runId": id, "name": "PILOT2", "score": 100, "level": 1,
+		"kills": 1, "shots": 1, "hits": 1, "duration": 60,
+	})
+	feed = srv.hub.Feed()
+	if strings.Contains(feed[len(feed)-1].Text, "normal") {
+		t.Errorf("the default tier should be implicit: %q", feed[len(feed)-1].Text)
+	}
+}
+
+func TestCampaignServesTheTiers(t *testing.T) {
+	srv := newTestServer(t)
+	w, _ := do(t, srv, "GET", "/api/levels", nil)
+	var c game.Campaign
+	if err := json.Unmarshal(w.Body.Bytes(), &c); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Difficulties) != len(game.Difficulties) {
+		t.Errorf("campaign carries %d tiers", len(c.Difficulties))
+	}
+	if len(c.Levels) != 25 {
+		t.Errorf("campaign carries %d levels, want 25", len(c.Levels))
 	}
 }

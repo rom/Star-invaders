@@ -311,6 +311,20 @@ a:hover { text-decoration: underline; }
 }
 .name-row input:focus { outline: 2px solid var(--green); outline-offset: 1px; }
 
+.tiers { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tiers .tier {
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 7px 12px; cursor: pointer; border-radius: 999px;
+  color: var(--ink-dim); background: transparent;
+  border: 1px solid rgba(215, 227, 255, 0.22);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.tiers .tier:hover { color: var(--ink); border-color: var(--line-strong); }
+.tiers .tier.on { color: var(--green); border-color: var(--green); background: rgba(124, 243, 160, 0.12); }
+.tier-blurb { min-height: 1.4em; }
+.tier-tag { color: var(--amber); text-transform: uppercase; letter-spacing: 0.06em; }
+.scorecard dd.small { font-size: 0.82rem; }
+
 .scorecard { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 10px; width: 100%; }
 .scorecard div { background: rgba(255,255,255,0.045); border: 1px solid var(--line); border-radius: 8px; padding: 9px 6px; }
 .scorecard dt { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-dim); }
@@ -402,7 +416,9 @@ kbd {
 .board li.board-empty { display: block; color: var(--ink-dim); border: 0; }
 .board .rk { color: var(--ink-dim); font-size: 0.72rem; }
 .board .nm { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.board .nm small { color: var(--ink-dim); font-size: 0.86em; display: block; }
+/* The detail line gains a difficulty tag, so let it wrap rather than
+   truncate the run's figures away. */
+.board .nm small { color: var(--ink-dim); font-size: 0.86em; display: block; white-space: normal; }
 .board .sc { color: var(--green); font-variant-numeric: tabular-nums; text-align: right; }
 .board li:nth-child(1) .sc { color: var(--amber); }
 .board li:nth-child(1) .rk { color: var(--amber); }

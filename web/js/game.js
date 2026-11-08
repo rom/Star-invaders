@@ -52,6 +52,15 @@ export class Game {
     this.level = this.levels[0];
     this.best = 0;
 
+    // Difficulty scales the threat, never the player's weapons. Normal is
+    // every multiplier at 1, so the campaign plays exactly as balanced.
+    this.difficulties = campaign.difficulties || [];
+    this.difficulty = this.difficulties.find((d) => d.default) || {
+      id: 'normal', name: 'Normal', fireIntervalMul: 1, aimScatterMul: 1,
+      projectileSpeedMul: 1, formationStepMul: 1, bossHpMul: 1,
+      dropChanceMul: 1, livesBonus: 0, bulletCap: 24, scoreMul: 1,
+    };
+
     this.keys = new Set();
     this.touch = { left: false, right: false, fire: false };
     this.pointerX = null;
@@ -97,11 +106,28 @@ export class Game {
     this._bindInput();
   }
 
+  /** Switches tier. Takes effect from the next run. */
+  setDifficulty(id) {
+    const found = this.difficulties.find((d) => d.id === id);
+    if (found) this.difficulty = found;
+    return this.difficulty;
+  }
+
+  get scoreMul() { return this.difficulty.scoreMul || 1; }
+
+  /** Every point scored goes through here so the tier scales all of it. */
+  addScore(n) {
+    const gained = Math.round(n * this.scoreMul);
+    this.stats.score += gained;
+    return gained;
+  }
+
   freshStats() {
     return {
-      score: 0, lives: this.rules.startingLives, kills: 0, shots: 0, hits: 0,
+      score: 0, lives: Math.max(1, this.rules.startingLives + (this.difficulty.livesBonus || 0)), kills: 0, shots: 0, hits: 0,
       combo: 0, comboTimer: 0, bestCombo: 0, startedAt: 0, duration: 0,
-      nextExtra: this.rules.extraLifeEvery, levelDamage: 0, levelsCleared: 0,
+      nextExtra: Math.round(this.rules.extraLifeEvery * (this.difficulty.scoreMul || 1)),
+      levelDamage: 0, levelsCleared: 0,
       hazardKills: 0,
     };
   }
@@ -255,20 +281,23 @@ export class Game {
     // produce a bullet-hell curtain rather than the sparse, readable fire of
     // an invaders game, so the swarm as a whole gets a shot budget and the
     // individual fire rates only decide who gets to use it.
-    this.shotInterval = Math.max(0.18, 0.56 - 0.023 * (n - 1)) / this.fireMul;
+    const d = this.difficulty;
+    this.shotInterval = (Math.max(0.18, 0.56 - 0.023 * (n - 1)) / this.fireMul)
+      * (d.fireIntervalMul || 1);
     this.shotGate = this.shotInterval;
+    this.bulletCap = d.bulletCap || MAX_ENEMY_BULLETS;
     // Perfectly aimed fire from a dozen shooters at once is the least fair
     // thing in the game: there is no read on it, only a dice roll. Aimed
     // shots get a scatter that tightens as the campaign goes on, so later
     // gunnery feels sharper without earlier levels feeling arbitrary.
-    this.aimScatter = Math.max(0.035, 0.11 - 0.006 * (n - 1));
+    this.aimScatter = Math.max(0.035, 0.11 - 0.006 * (n - 1)) * (d.aimScatterMul || 1);
 
     this.player.x = VIEW.W / 2;
     this.player.vx = 0;
     this.player.invuln = 1.6;
 
     this.formation = new Formation({
-      stepInterval: lv.formationStep || 0.7,
+      stepInterval: (lv.formationStep || 0.7) * (d.formationStepMul || 1),
       drop: lv.formationDrop || 18,
       stepSize: 10,
       W: VIEW.W,
@@ -300,7 +329,10 @@ export class Game {
   spawnFromPlan(item) {
     const a = item.arch;
     if (item.boss) {
-      const e = new Entity(a, { x: VIEW.W / 2, y: -140, anchorY: item.y, ...item.opts });
+      const e = new Entity(a, {
+        x: VIEW.W / 2, y: -140, anchorY: item.y,
+        hpMul: this.difficulty.bossHpMul || 1, ...item.opts,
+      });
       e.entering = true;
       e.blinkTimer = 0;
       this.boss = e;
@@ -600,13 +632,13 @@ export class Game {
    */
   requestEnemyShot() {
     if (this.shotGate > 0) return false;
-    if (this.enemyBullets.length >= MAX_ENEMY_BULLETS) return false;
+    if (this.enemyBullets.length >= (this.bulletCap || MAX_ENEMY_BULLETS)) return false;
     this.shotGate = this.shotInterval * rand(0.7, 1.35);
     return true;
   }
 
   enemyFire(e) {
-    const base = e.projectileSpeed;
+    const base = e.projectileSpeed * (this.difficulty.projectileSpeedMul || 1);
     const scatter = this.aimScatter || 0.08;
     const toPlayer = Math.atan2(this.player.y - e.y, this.player.x - e.x)
       + rand(-scatter, scatter);
@@ -636,6 +668,10 @@ export class Game {
   }
 
   bossShot(b, angle, speed, kind = 'orb', r = 8) {
+    // Boss patterns bypass the swarm's shot budget on purpose, but not
+    // without limit: a late-phase fan every third of a second would
+    // otherwise fill the screen faster than it drains.
+    if (this.enemyBullets.length >= Math.round((this.bulletCap || MAX_ENEMY_BULLETS) * 1.6)) return;
     this.enemyBullets.push({
       x: b.x, y: b.y + b.r * 0.4,
       vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
@@ -644,11 +680,11 @@ export class Game {
   }
 
   runBossPattern(b, name, phase) {
-    const speed = b.projectileSpeed;
+    const speed = b.projectileSpeed * (this.difficulty.projectileSpeedMul || 1);
     const aim = Math.atan2(this.player.y - b.y, this.player.x - b.x);
     switch (name) {
       case 'fan': {
-        const n = 5 + phase * 2;
+        const n = Math.min(13, 5 + phase * 2);
         for (let i = 0; i < n; i++) {
           const a = (Math.PI / 2) + (i - (n - 1) / 2) * (1.6 / n);
           this.bossShot(b, a, speed, 'orb', 8);
@@ -684,7 +720,11 @@ export class Game {
             fn: () => {
               if (!b.alive) return;
               const a = Math.atan2(this.player.y - b.y, this.player.x - b.x);
-              this.bossShot(b, a, speed * 1.5, 'laser', 4);
+              // Boss patterns are authored, so they bypass the aim scatter
+              // that ordinary gunnery gets. At 1.5x a laser crossed the
+              // field faster than the shot could be read; 1.3 still punishes
+              // standing still without being a coin toss.
+              this.bossShot(b, a, speed * 1.3, 'laser', 4);
               audio.enemyShoot();
             },
           });
@@ -706,13 +746,21 @@ export class Game {
         break;
       }
       case 'beam': {
+        // Two at once is a dodge; four is a wall with no gap in it.
+        if (this.beams.length >= 2) break;
         this.beams.push({ x: this.player.x, w: 54, warn: 0.85, active: 0.7, t: 0 });
         audio.bossWarning();
         break;
       }
       case 'summon': {
+        // Escorts are the boss's doing, not the level's. They are capped so
+        // a long fight cannot bury the field, and they do not gate
+        // completion: what a level requires is what its waves declared, the
+        // same rule that keeps hazards from making a level unwinnable.
+        const escorts = this.entities.filter((e) => e.alive && e.summoned).length;
+        if (escorts >= 16) break;
         const ids = ['scout', 'swarmer', 'grunt'];
-        const n = 2 + phase;
+        const n = Math.min(2 + phase, 16 - escorts);
         for (let i = 0; i < n; i++) {
           const a = this.archetypes[pickOne(ids)];
           if (!a) continue;
@@ -722,6 +770,8 @@ export class Game {
             vy: (a.speed || 90) * 0.6, anchorY: b.y,
           });
           if (a.behavior === 'dive') { e.state = 'dive'; e.vy = e.speed; }
+          e.summoned = true;
+          e.required = false;
           this.entities.push(e);
           this.burst(e.x, e.y, a.color, 8, 0.7);
         }
@@ -787,7 +837,8 @@ export class Game {
     const lv = this.level;
     if (!lv.powerups || lv.powerups.length === 0) return;
     if (!e.required && Math.random() > 0.35) return; // hazards drop rarely
-    if (Math.random() > (lv.dropChance || 0.1)) return;
+    const chance = (lv.dropChance || 0.1) * (this.difficulty.dropChanceMul || 1);
+    if (Math.random() > chance) return;
     const id = pickOne(lv.powerups);
     const info = this.powerupInfo.get(id);
     this.powerups.push({
@@ -970,11 +1021,28 @@ export class Game {
     }
   }
 
+  /** A hatching parent (a Brood Hive) putting another child on the field. */
+  hatch(parent) {
+    const childId = parent.arch.hatchInto;
+    const child = this.archetypes[childId];
+    if (!child) return;
+    const live = this.entities.filter((x) => x.alive && x.arch.id === childId).length;
+    if (live >= 26 || this.entities.length > 140) return;   // keep the field readable
+    const e = new Entity(child, {
+      x: clamp(parent.x + rand(-18, 18), 24, VIEW.W - 24),
+      y: parent.y + parent.r * 0.7,
+      vy: (child.speed || 120) * 0.5,
+      anchorY: parent.y,
+    });
+    if (child.behavior === 'dive') { e.state = 'dive'; e.vy = e.speed; }
+    this.entities.push(e);
+    this.burst(e.x, e.y, child.color, 7, 0.6);
+  }
+
   awardKill(e, byShot) {
     const combo = this.stats.combo;
     const mult = 1 + Math.min(this.rules.comboMax - 1, Math.floor(combo / 3));
-    const gained = Math.round(e.score * mult);
-    this.stats.score += gained;
+    const gained = this.addScore(e.score * mult);
     this.stats.kills++;
     if (!e.required) this.stats.hazardKills++;
 
@@ -990,8 +1058,9 @@ export class Game {
     this.addFloater(e.x, e.y, mult > 1 ? `${gained} x${mult}` : `${gained}`,
       mult > 2 ? '#ffd166' : '#d7e3ff');
 
+    const extraStep = Math.max(1, Math.round(this.rules.extraLifeEvery * this.scoreMul));
     while (this.stats.score >= this.stats.nextExtra) {
-      this.stats.nextExtra += this.rules.extraLifeEvery;
+      this.stats.nextExtra += extraStep;
       this.stats.lives++;
       audio.extraLife();
       this.hooks.onToast?.('extra hull earned', 'ok');
@@ -1087,7 +1156,7 @@ export class Game {
     const clearBonus = this.rules.clearBonusPerLevel * lvl;
     const lifeBonus = this.stats.lives * 250;
     const perfect = this.stats.levelDamage === 0 ? this.rules.perfectBonus : 0;
-    this.stats.score += clearBonus + lifeBonus + perfect;
+    this.addScore(clearBonus + lifeBonus + perfect);
     this.stats.levelsCleared++;
     this.state = STATES.LEVEL_CLEAR;
     audio.levelClear();

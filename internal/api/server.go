@@ -242,6 +242,7 @@ func (s *Server) statsPayload() map[string]any {
 		"totalSeconds": st.TotalSeconds,
 		"online":       s.hub.Online(),
 		"levelCount":   game.MaxLevel(),
+		"difficulties": len(game.Difficulties),
 	}
 }
 
@@ -253,6 +254,7 @@ type startRunRequest struct {
 	Name       string `json:"name"`
 	ClientID   string `json:"clientId"`
 	StartLevel int    `json:"startLevel"`
+	Difficulty string `json:"difficulty"`
 }
 
 func (s *Server) handleStartRun(w http.ResponseWriter, r *http.Request) {
@@ -267,11 +269,15 @@ func (s *Server) handleStartRun(w http.ResponseWriter, r *http.Request) {
 	}
 	name := sanitizeName(req.Name)
 	startLevel := clamp(req.StartLevel, 1, game.MaxLevel())
-	run := s.runs.start(name, req.ClientID, ip, startLevel)
+	// The tier is fixed here, at launch, so a run cannot be played on super
+	// easy and then reported as insane for the higher score allowance.
+	tier := game.DifficultyByID(req.Difficulty)
+	run := s.runs.start(name, req.ClientID, ip, startLevel, tier.ID)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"runId":      run.ID,
 		"name":       name,
 		"startLevel": startLevel,
+		"difficulty": tier.ID,
 		"startedAt":  run.Started.UTC(),
 	})
 }
@@ -318,10 +324,11 @@ func (s *Server) handleSubmitScore(w http.ResponseWriter, r *http.Request) {
 		// Dying on the level you started on is the floor.
 		req.Level = run.StartLevel
 	}
-	if ceiling := game.ScoreCeilingRange(run.StartLevel, req.Level); req.Score > ceiling {
+	tier := game.DifficultyByID(run.Difficulty)
+	if ceiling := game.ScoreCeilingFor(run.StartLevel, req.Level, tier); req.Score > ceiling {
 		writeErr(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("score %d exceeds the ceiling of %d for levels %d-%d",
-				req.Score, ceiling, run.StartLevel, req.Level))
+			fmt.Sprintf("score %d exceeds the ceiling of %d for levels %d-%d on %s",
+				req.Score, ceiling, run.StartLevel, req.Level, tier.Name))
 		return
 	}
 
@@ -358,13 +365,14 @@ func (s *Server) handleSubmitScore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entry, rank, err := s.cfg.Store.Submit(scores.Entry{
-		Name:     name,
-		Score:    req.Score,
-		Level:    req.Level,
-		Kills:    req.Kills,
-		Accuracy: accuracy,
-		Victory:  req.Victory,
-		Duration: math.Round(duration),
+		Name:       name,
+		Score:      req.Score,
+		Level:      req.Level,
+		Difficulty: tier.ID,
+		Kills:      req.Kills,
+		Accuracy:   accuracy,
+		Victory:    req.Victory,
+		Duration:   math.Round(duration),
 	})
 	if err != nil {
 		s.cfg.Logger.Printf("score submit failed: %v", err)
@@ -380,6 +388,9 @@ func (s *Server) handleSubmitScore(w http.ResponseWriter, r *http.Request) {
 		verb = "finished the campaign"
 	}
 	text := fmt.Sprintf("%s on level %d with %s points", verb, entry.Level, formatInt(entry.Score))
+	if !tier.Default {
+		text += fmt.Sprintf(" on %s", strings.ToLower(tier.Name))
+	}
 	if isTop10 {
 		text += fmt.Sprintf(" - rank #%d", rank)
 	}

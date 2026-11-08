@@ -156,17 +156,23 @@ export class UI {
     this.el.overlay.scrollTop = 0;
   }
 
-  menu({ name, best, online, top, levelCount, canResume }) {
+  menu({ name, best, online, top, levelCount, canResume, difficulties, difficulty, bossLevels }) {
     const leaders = top.slice(0, 3).map((s, i) => `<span>#${i + 1} ${esc(s.name)} ${fmt(s.score)}</span>`).join('');
+    const tiers = (difficulties || []).map((d) => `
+      <button type="button" class="tier${d.id === difficulty ? ' on' : ''}" data-tier="${esc(d.id)}"
+              title="${esc(d.blurb)}">${esc(d.name)}</button>`).join('');
+    const chosen = (difficulties || []).find((d) => d.id === difficulty);
     this.showOverlay(`
       <h2>Star Invaders</h2>
       <p class="tagline">${levelCount} levels of aliens, armour and unidentified rocks.</p>
       <p>Hold the line at the bottom of the screen. Every attacker in a level must be destroyed
-         before the next one unlocks. Bosses wait on levels 5, 9 and 12.</p>
+         before the next one unlocks. Bosses wait on levels ${esc(bossLevels || '5, 9 and 12')}.</p>
       <div class="name-row">
         <label for="pilotName">pilot</label>
         <input id="pilotName" maxlength="14" value="${esc(name)}" autocomplete="off" spellcheck="false">
       </div>
+      <div class="tiers" role="group" aria-label="Difficulty">${tiers}</div>
+      <p class="hint tier-blurb">${esc(chosen ? chosen.blurb : '')}</p>
       <div class="actions">
         <button class="btn primary" id="btnStart" type="button">${canResume ? 'New sortie' : 'Launch'}</button>
         <button class="btn ghost" id="btnPractice" type="button">Level select</button>
@@ -185,7 +191,7 @@ export class UI {
     }
   }
 
-  levelSelect({ levels, unlocked }) {
+  levelSelect({ levels, unlocked, difficultyName }) {
     const items = levels.map((lv) => {
       const locked = lv.number > unlocked;
       return `<button class="btn ${locked ? 'ghost' : ''}" data-level="${lv.number}" ${locked ? 'disabled' : ''}
@@ -195,7 +201,7 @@ export class UI {
     }).join('');
     this.showOverlay(`
       <h2>Level select</h2>
-      <p>Levels unlock as you clear them. Scores from a mid-campaign start still count.</p>
+      <p>Levels unlock as you clear them. Scores from a mid-campaign start still count.${difficultyName ? ` Playing on <b>${esc(difficultyName)}</b>.` : ''}</p>
       <div class="actions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));width:100%">${items}</div>
       <div class="actions"><button class="btn ghost" id="btnBackMenu" type="button">Back</button></div>
     `);
@@ -282,7 +288,7 @@ export class UI {
     `);
   }
 
-  gameEnd({ victory, reason, score, level, kills, accuracy, bestCombo, duration: dur, rank, submitState, levelName }) {
+  gameEnd({ victory, reason, score, level, kills, accuracy, bestCombo, duration: dur, rank, submitState, levelName, difficultyName }) {
     const rankLine = submitState === 'pending'
       ? '<p class="hint">reporting to the defence net&hellip;</p>'
       : submitState === 'ok'
@@ -302,6 +308,7 @@ export class UI {
         <div><dt>accuracy</dt><dd>${accuracy.toFixed(0)}%</dd></div>
         <div><dt>best chain</dt><dd>${bestCombo}</dd></div>
         <div><dt>time</dt><dd>${duration(dur)}</dd></div>
+        ${difficultyName ? `<div><dt>difficulty</dt><dd class="small">${esc(difficultyName)}</dd></div>` : ''}
       </dl>
       ${rankLine}
       <div class="actions">
@@ -341,7 +348,7 @@ export class UI {
       <li class="${s.id === myId ? 'me' : ''}">
         <span class="rk">${String(i + 1).padStart(2, '0')}</span>
         <span class="nm">${esc(s.name)}${s.victory ? ' <span class="won">*</span>' : ''}
-          <small>lv ${s.level} &middot; ${fmt(s.kills)} kills &middot; ${s.accuracy.toFixed(0)}% &middot; ${timeAgo(s.createdAt)}</small>
+          <small>lv ${s.level}${s.difficulty && s.difficulty !== 'normal' ? ` &middot; <span class="tier-tag">${esc(s.difficulty)}</span>` : ''} &middot; ${fmt(s.kills)} kills &middot; ${s.accuracy.toFixed(0)}% &middot; ${timeAgo(s.createdAt)}</small>
         </span>
         <span class="sc">${fmt(s.score)}</span>
       </li>`).join('');

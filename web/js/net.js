@@ -232,13 +232,14 @@ export class Net {
 
   /* --------------------------------------------------------------- runs */
 
-  async startRun(name, startLevel = 1) {
+  async startRun(name, startLevel = 1, difficulty = 'normal') {
     this._name = name || this._name;
     try {
       const data = await postJSON('/api/runs', {
         name: this._name,
         clientId: this.clientId ?? '',
         startLevel: startLevel | 0,
+        difficulty,
       });
       this.runId = data.runId;
       this.runStartedAt = Date.now();

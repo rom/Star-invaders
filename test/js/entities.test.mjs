@@ -21,8 +21,13 @@ function fakeGame() {
     player: { x: 450, y: 602, r: 15 },
     enemyBullets: [],
     spark() {},
+    burst() {},
     fireMul: 1,
+    difficulty: { projectileSpeedMul: 1 },
     requestEnemyShot: () => false,
+    onBossPhase() {},
+    runBossPattern() {},
+    hatch() {},
   };
 }
 
@@ -191,4 +196,44 @@ test('entities carry their archetype score and required flag', () => {
   );
   assert.equal(e.required, false, 'hazards must not gate level completion');
   assert.equal(e.score, 75);
+});
+
+// Regression: difficulty scales a boss's max HP, but its phase thresholds
+// are written against the archetype's own hull. Read absolutely, a weakened
+// boss starts in a late phase and a reinforced one never leaves its first.
+test('boss phases are proportional to the hull it actually has', () => {
+  const g = fakeGame();
+  const archetype = {
+    id: 'warden', kind: 'boss', hp: 100, radius: 60, behavior: 'boss', score: 1,
+    phaseHP: [75, 40], patterns: ['fan', 'sweep', 'summon'], fireRate: 1,
+  };
+
+  const phaseOf = (hpMul, hpFraction) => {
+    const e = new Entity(archetype, { x: 450, y: 150, anchorY: 150, hpMul });
+    e.entering = false;
+    e.hp = Math.round(e.maxHp * hpFraction);
+    e.update(0.016, g);
+    return e.bossPhase;
+  };
+
+  // At full hull every boss is in its opening phase, however much hull that is.
+  assert.equal(phaseOf(1, 1), 0, 'normal, full hull');
+  assert.equal(phaseOf(0.55, 1), 0, 'weakened boss must still open on phase 0');
+  assert.equal(phaseOf(1.85, 1), 0, 'reinforced boss opens on phase 0 too');
+
+  // And the phases land at the same fractions of hull on every tier.
+  for (const mul of [0.55, 1, 1.85]) {
+    assert.equal(phaseOf(mul, 0.6), 1, `hpMul ${mul} at 60% hull`);
+    assert.equal(phaseOf(mul, 0.2), 2, `hpMul ${mul} at 20% hull`);
+  }
+});
+
+test('an entity takes its hp multiplier from the spawn options', () => {
+  const g = fakeGame();
+  const base = { id: 'warden', kind: 'boss', hp: 100, radius: 60, behavior: 'boss', score: 1 };
+  assert.equal(new Entity(base, {}).maxHp, 100);
+  assert.equal(new Entity(base, { hpMul: 1.85 }).maxHp, 185);
+  assert.equal(new Entity(base, { hpMul: 0.55 }).maxHp, 55);
+  assert.ok(new Entity(base, { hpMul: 0.001 }).maxHp >= 1, 'never scales to zero hull');
+  void g;
 });

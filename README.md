@@ -1,9 +1,9 @@
 # Star Invaders
 
-A twelve-level browser shooter in the Space Invaders lineage, with a Go back
-end that keeps the campaign definition, a persistent global high score table,
-and a live "defence net" that lets everyone playing see what everyone else is
-doing.
+A twenty-five level browser shooter in the Space Invaders lineage, with six
+difficulty tiers, a Go back end that keeps the campaign definition, a
+persistent global high score table, a level editor, and a live "defence net"
+that lets everyone playing see what everyone else is doing.
 
 No game engine, no build step, no third party assets. The server is pure Go
 standard library; the client is plain ES modules, canvas, and Web Audio.
@@ -16,9 +16,9 @@ go run .        # then open http://localhost:8080
 
 ## What is in the box
 
-**Twelve levels, each with a mix of attackers.** Every level must be cleared
-of its hostiles before the next one unlocks. Levels 5, 9 and 12 add a
-multi-phase boss on top of the regular waves.
+**Twenty-five levels, each with a mix of attackers.** Every level must be
+cleared of its hostiles before the next one unlocks. Levels 5, 9, 12, 16, 20
+and 25 add a multi-phase boss on top of the regular waves.
 
 | # | Level | Attackers | Hazards |
 |---|-------|-----------|---------|
@@ -33,19 +33,34 @@ multi-phase boss on top of the regular waves.
 | 9 | **The Harbinger** | boss + phantoms, scouts | comets |
 | 10 | Swarm Protocol | swarmlets, lancers, gunners | asteroids, comets |
 | 11 | Siege Line | bulwarks, gunners, splitters, phantoms | comets, asteroids, mines |
-| 12 | **Void Dreadnought** | final boss + bulwarks, swarmlets, lancers | everything |
+| 12 | **Void Dreadnought** | boss + bulwarks, swarmlets, lancers | everything |
+| 13 | Shrike Country | shrikes, grunts | comets |
+| 14 | Broodfall | brood hives, gunners, scouts | asteroids |
+| 15 | Broadside | marauders, bulwarks, gunners | ice shards, comets |
+| 16 | **The Leviathan** | boss + hives, shrikes | comets |
+| 17 | Seraph Choir | seraphs, weavers, phantoms | gravity mines |
+| 18 | Deadfall | splitters, lancers, gunners | gravity mines, ice shards |
+| 19 | Revenant Watch | revenants, seraphs, shrikes | comets |
+| 20 | **The Oracle** | boss + seraphs, revenants | gravity mines |
+| 21 | Iron Tide | bulwarks, marauders, gunners | asteroids, gravity mines |
+| 22 | Hatchery | hives, swarmlets, shrikes | comets |
+| 23 | Cold Choir | revenants, phantoms, seraphs | ice shards, gravity mines |
+| 24 | The Long Approach | bulwarks, revenants, hives, lancers, marauders | everything |
+| 25 | **The Sovereign** | final boss + bulwarks, revenants, swarmlets | everything |
 
 Every level opens on a briefing naming exactly what is about to arrive, and in
 what numbers:
 
 ![The level 4 briefing: sine weavers, volt gunners, krill grunts and needle scouts, with ion comets and asteroids listed as hazards](docs/screenshots/level-briefing.png)
 
-Ten alien archetypes, four "unknown space objects" and three bosses, each with
-its own silhouette and behaviour: marching formations, divers that peel off and
-come at you, sine weavers, orbiters, phantoms that cloak out of your targeting
-solution, splitters that become two scouts when killed, armoured bulwarks that
-halve head-on damage, and suicide lancers. The drifting objects do not shoot
-and cannot be reasoned with. The in-game codex lists every one of them, built
+Fifteen alien archetypes, six "unknown space objects" and six bosses, each
+with its own silhouette and behaviour: marching formations, divers that peel
+off and come at you, sine weavers, orbiters, phantoms that cloak out of your
+targeting solution, splitters that become two scouts when killed, armoured
+bulwarks that halve head-on damage, suicide lancers, marauders that cross the
+field broadside, revenants that leave two phantoms behind, and brood hives
+that keep hatching for as long as you let them. The drifting objects do not
+shoot and cannot be reasoned with. The in-game codex lists every one of them, built
 from the same definitions the game is played from:
 
 <img src="docs/screenshots/codex.png" width="328" alt="The codex panel: each
@@ -61,6 +76,27 @@ Bosses hold the screen on levels 5, 9 and 12, each running through several
 attack phases as its hull comes apart:
 
 ![The Void Dreadnought on level 12, health bar part drained, firing orb spreads while armoured bulwarks and swarmlets close in](docs/screenshots/boss.png)
+
+**Six difficulty tiers**, from super easy to insane. They scale the threat,
+never the player's guns: how often the swarm may fire, how well it aims, how
+fast its shots travel, how quickly the formation marches, how much hull a
+boss has, how many lives you start with, and how much incoming fire may be on
+screen at once. Normal is the campaign exactly as it was balanced, so every
+multiplier on it is 1.
+
+| Tier | Hulls | Enemy fire | Aim | Boss HP | Score |
+|---|---|---|---|---|---|
+| Super easy | 6 | 2.0x slower | 2.2x sloppier | 0.55x | 0.35x |
+| Easy | 4 | 1.45x slower | 1.6x sloppier | 0.75x | 0.65x |
+| **Normal** | 3 | - | - | - | 1x |
+| Hard | 3 | 1.28x faster | 1.4x sharper | 1.25x | 1.4x |
+| Super hard | 2 | 1.6x faster | 2.2x sharper | 1.5x | 1.9x |
+| Insane | 2 | 2x faster | 4x sharper | 1.85x | 2.6x |
+
+Scoring is scaled with the tier and the server's anti-forgery ceiling is
+scaled with it too, so the leaderboard ranks play rather than whoever picked
+the gentlest setting. The tier is fixed when a run launches, server side, and
+shown on the leaderboard beside the score.
 
 **Sound.** Every effect is synthesised at runtime with the Web Audio API -
 pulse, triangle and noise voices through a limiter. Cannon fire, hits, armour
@@ -122,6 +158,7 @@ entire deployment: one file, no runtime dependencies, no CGO.
 | | |
 |---|---|
 | Move | `←` `→` or `A` `D`, or drag anywhere on the play field |
+| Difficulty | chosen on the title screen, remembered between runs |
 | Fire | `Space` (hold), or drag-to-fly fires automatically |
 | Smart bomb | `B` |
 | Pause | `P` or `Esc` |
@@ -147,7 +184,7 @@ without being hit pays a flawless bonus.
 | `GET` | `/api/health` | liveness, version, players online |
 | `GET` | `/api/levels` | the whole campaign: archetypes, levels, powerups, balance rules |
 | `GET` | `/api/scores?limit=N` | top N runs |
-| `POST` | `/api/runs` | mint a run token at game start |
+| `POST` | `/api/runs` | mint a run token at game start, fixing its difficulty |
 | `POST` | `/api/scores` | submit a finished run against its token |
 | `GET` | `/api/stats` | lifetime aggregates across all players |
 | `GET` | `/api/stream` | Server-Sent Events: roster, feed, chat, high scores |
@@ -200,9 +237,12 @@ simulation server-side, which this does not do. What the server does instead is
 raise the cost of a casual fake:
 
 - a run token is minted at game start, is single-use, and expires after 6 hours;
+- the difficulty is fixed on that token at launch, so a run cannot be played
+  on super easy and reported as insane to borrow its score allowance;
 - submissions are checked against a per-level score ceiling derived from the
-  actual contents of the levels played (starting on level 9 does not inherit
-  the allowance for levels 1-8);
+  actual contents of the levels played and scaled by the tier's score
+  multiplier (starting on level 9 does not inherit the allowance for levels
+  1-8, and an insane run is not judged against normal's ceiling);
 - a run has to have lasted long enough to be physically possible, unless the
   score is too small to be worth forging;
 - feed lines are composed server-side from an allow-list of milestone kinds, so
@@ -216,7 +256,7 @@ is a property of the genre, not an oversight.
 
 ```
 main.go                  flags, embedded assets, graceful shutdown
-internal/game/           archetypes, the 12 level scripts, score ceilings
+internal/game/           archetypes, the 25 level scripts, difficulty tiers, ceilings
 internal/scores/         file-backed leaderboard + lifetime stats
 internal/userlevels/     file-backed shelf of levels built in the editor
 internal/hub/            SSE fan-out: roster, feed, chat

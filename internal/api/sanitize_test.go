@@ -82,7 +82,7 @@ func TestLimiterSweepDropsIdleBuckets(t *testing.T) {
 
 func TestRunRegistryPeekDoesNotSpend(t *testing.T) {
 	rr := newRunRegistry(time.Hour)
-	r := rr.start("A", "", "1.2.3.4", 1)
+	r := rr.start("A", "", "1.2.3.4", 1, "normal")
 
 	if _, ok := rr.peek(r.ID); !ok {
 		t.Fatal("a fresh run should peek")
@@ -103,7 +103,7 @@ func TestRunRegistryPeekDoesNotSpend(t *testing.T) {
 
 func TestRunRegistrySweepExpires(t *testing.T) {
 	rr := newRunRegistry(time.Nanosecond)
-	r := rr.start("A", "", "ip", 1)
+	r := rr.start("A", "", "ip", 1, "normal")
 	time.Sleep(2 * time.Millisecond)
 	rr.sweep()
 	if rr.count() != 0 {

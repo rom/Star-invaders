@@ -16,7 +16,8 @@ import (
 type run struct {
 	ID         string
 	Name       string
-	StartLevel int // the level the player started on (level select)
+	StartLevel int    // the level the player started on (level select)
+	Difficulty string // the tier chosen at launch; the ceiling scales with it
 	Started    time.Time
 	Client     string // hub client id, if the player is on the live net
 	IP         string
@@ -41,9 +42,9 @@ func token() string {
 	return hex.EncodeToString(b[:])
 }
 
-func (rr *runRegistry) start(name, clientID, ip string, startLevel int) *run {
+func (rr *runRegistry) start(name, clientID, ip string, startLevel int, difficulty string) *run {
 	r := &run{
-		ID: token(), Name: name, StartLevel: startLevel,
+		ID: token(), Name: name, StartLevel: startLevel, Difficulty: difficulty,
 		Started: time.Now(), Client: clientID, IP: ip,
 	}
 	rr.mu.Lock()
